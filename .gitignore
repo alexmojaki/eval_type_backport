@@ -52,3 +52,5 @@ pydantic/*.so
 /sandbox/
 /worktrees/
 .pdm-python
+
+eval_type_backport/version.py
