@@ -67,6 +67,17 @@ class UnionTransformer(ast.NodeTransformer):
         return node
 
 
+def eval_type_backport_direct(
+    value: Any,
+    globalns: dict[str, Any] | None = None,
+    localns: dict[str, Any] | None = None,
+):
+    tree = ast.parse(value.__forward_arg__, mode='eval')
+    transformer = UnionTransformer(globalns, localns)
+    tree = transformer.visit(tree)
+    return transformer.eval_type(tree)
+
+
 def eval_type_backport(
     value: Any,
     globalns: dict[str, Any] | None = None,
@@ -84,7 +95,4 @@ def eval_type_backport(
     except TypeError as e:
         if not (isinstance(value, typing.ForwardRef) and is_unsupported_types_for_union_error(e)):
             raise
-        tree = ast.parse(value.__forward_arg__, mode='eval')
-        transformer = UnionTransformer(globalns, localns)
-        tree = transformer.visit(tree)
-        return transformer.eval_type(tree)
+        return eval_type_backport_direct(value, globalns, localns)
