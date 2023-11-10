@@ -20,10 +20,12 @@ class UnionTransformer(ast.NodeTransformer):
         if globalns is None and localns is None:
             globalns = localns = {}
         elif globalns is None:
-            assert localns is not None  # apparently pyright doesn't infer this automatically
+            # apparently pyright doesn't infer this automatically
+            assert localns is not None
             globalns = localns
         elif localns is None:
-            assert globalns is not None  # apparently pyright doesn't infer this automatically
+            # apparently pyright doesn't infer this automatically
+            assert globalns is not None
             localns = globalns
 
         self.typing_name = f'typing_{uuid.uuid4().hex}'
@@ -66,7 +68,9 @@ class UnionTransformer(ast.NodeTransformer):
 
 
 def eval_type_backport(
-        value: Any, globalns: dict[str, Any] | None = None, localns: dict[str, Any] | None = None
+    value: Any,
+    globalns: dict[str, Any] | None = None,
+    localns: dict[str, Any] | None = None,
 ) -> Any:
     """
     Like `typing._eval_type`, but lets older Python versions use newer typing features.
