@@ -68,7 +68,7 @@ class UnionTransformer(ast.NodeTransformer):
 
 
 def eval_type_backport_direct(
-    value: Any,
+    value: typing.ForwardRef,
     globalns: dict[str, Any] | None = None,
     localns: dict[str, Any] | None = None,
 ):
