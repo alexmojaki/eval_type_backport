@@ -29,7 +29,7 @@ jobs:
       run: |
         coverage run -m pytest tests
     - name: Coveralls Python
-      uses: AndreMiras/coveralls-python-action@v20201129
+      uses: coverallsapp/github-action@v2
       with:
         parallel: true
         flag-name: test-${{ matrix.python-version }}
@@ -39,6 +39,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
-        uses: AndreMiras/coveralls-python-action@v20201129
+        uses: coverallsapp/github-action@v2
         with:
           parallel-finished: true
