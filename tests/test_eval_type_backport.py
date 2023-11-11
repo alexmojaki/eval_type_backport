@@ -1,6 +1,8 @@
 import sys
 import typing as t
 
+import pytest
+
 from eval_type_backport import eval_type_backport
 
 
@@ -62,3 +64,8 @@ def test_eval_type_backport():
             ]
         ],
     )
+
+
+def test_other_type_error():
+    with pytest.raises(TypeError):
+        check_eval('int | str + float', None)
