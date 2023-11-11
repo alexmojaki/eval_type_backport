@@ -67,5 +67,14 @@ def test_eval_type_backport():
 
 
 def test_other_type_error():
-    with pytest.raises(TypeError):
-        check_eval('int | str + float', None)
+    for code in [
+        'int + str',
+        '(int | str) + float',
+        'int | (str + float)',
+        '(int + str) | float',
+        'int + (str | float)',
+        '(int | str) + (float | None)',
+        '(int + str) | (float + None)',
+    ]:
+        with pytest.raises(TypeError):
+            check_eval(code, None)
