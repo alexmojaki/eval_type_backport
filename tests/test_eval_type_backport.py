@@ -1,16 +1,22 @@
 import sys
 import typing as t
 
-from eval_type_backport import eval_type_backport, eval_type_backport_direct
+from eval_type_backport import eval_type_backport
 
 
 def check_eval(code: str, expected: t.Any):
     ref = t.ForwardRef(code)
-    assert eval_type_backport(ref, globals(), locals()) == expected
-    assert eval_type_backport_direct(ref, globals(), locals()) == expected
-    if sys.version_info >= (3, 10):
-        assert eval(code) == expected
-        assert t._eval_type(ref, globals(), locals()) == expected  # type: ignore
+    for globalns in (None, globals(), {'t': t}, {}):
+        for localns in (None, locals(), {'t': t}, {}):
+            ns = dict(globalns=globalns, localns=localns)
+            try:
+                assert eval_type_backport(ref, **ns, try_default=True) == expected
+            except NameError:
+                continue
+            assert eval_type_backport(ref, **ns, try_default=False) == expected
+            if sys.version_info >= (3, 10):
+                assert eval(code) == expected
+                assert t._eval_type(ref, **ns) == expected  # type: ignore
 
 
 def test_eval_type_backport():

@@ -67,7 +67,7 @@ class UnionTransformer(ast.NodeTransformer):
         return node
 
 
-def eval_type_backport_direct(
+def _eval_direct(
     value: typing.ForwardRef,
     globalns: dict[str, Any] | None = None,
     localns: dict[str, Any] | None = None,
@@ -82,12 +82,15 @@ def eval_type_backport(
     value: Any,
     globalns: dict[str, Any] | None = None,
     localns: dict[str, Any] | None = None,
+    try_default: bool = True,
 ) -> Any:
     """
     Like `typing._eval_type`, but lets older Python versions use newer typing features.
     Currently this just means that `X | Y` is converted to `Union[X, Y]` if `X | Y` is not supported.
     This would also be the place to add support for `list[int]` instead of `List[int]` etc.
     """
+    if not try_default:
+        return _eval_direct(value, globalns, localns)
     try:
         return typing._eval_type(  # type: ignore
             value, globalns, localns
@@ -95,4 +98,4 @@ def eval_type_backport(
     except TypeError as e:
         if not (isinstance(value, typing.ForwardRef) and is_unsupported_types_for_union_error(e)):
             raise
-        return eval_type_backport_direct(value, globalns, localns)
+        return _eval_direct(value, globalns, localns)
