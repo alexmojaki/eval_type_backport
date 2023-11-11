@@ -28,6 +28,7 @@ jobs:
     - name: Test
       run: |
         coverage run -m pytest tests
+        coverage report -m
     - name: Coveralls Python
       uses: coverallsapp/github-action@v2
       with:
