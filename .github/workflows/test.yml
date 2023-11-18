@@ -27,7 +27,7 @@ jobs:
         pip install --upgrade coveralls .[tests]
     - name: Test
       run: |
-        coverage run -m pytest tests
+        coverage run --source eval_type_backport -m pytest tests
         coverage report -m
     - name: Coveralls Python
       uses: AndreMiras/coveralls-python-action@v20201129
