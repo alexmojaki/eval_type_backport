@@ -26,21 +26,24 @@ jobs:
         pip install --upgrade pip
         pip install --upgrade coveralls .[tests]
     - name: Test
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_FLAG_NAME: "test-${{ matrix.python-version }}"
+        COVERALLS_PARALLEL: true
       run: |
         coverage run --source eval_type_backport -m pytest tests
         coverage report -m
-        git config --global --add safe.directory /github/workspace
-    - name: Coveralls Python
-      uses: AndreMiras/coveralls-python-action@v20201129
-      with:
-        parallel: true
-        flag-name: test-${{ matrix.python-version }}
+        coveralls --service=github
 
-  coveralls_finish:
+  coveralls:
+    name: Coveralls Finished
     needs: test
     runs-on: ubuntu-latest
+    container: python:3-slim
     steps:
-      - name: Coveralls Finished
-        uses: AndreMiras/coveralls-python-action@v20201129
-        with:
-          parallel-finished: true
+    - name: Finished
+      run: |
+        pip3 install --upgrade coveralls
+        coveralls --service=github --finish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
