@@ -29,7 +29,7 @@ jobs:
       run: |
         coverage run --source eval_type_backport -m pytest tests
         coverage report -m
-        git status
+        git config --global --add safe.directory /github/workspace
     - name: Coveralls Python
       uses: AndreMiras/coveralls-python-action@v20201129
       with:
