@@ -50,7 +50,7 @@ class UnionTransformer(ast.NodeTransformer):
             try:
                 _ = left_val | right_val
             except TypeError as e:
-                if not is_unsupported_types_for_union_error(e):  # pragma: no cover
+                if not is_unsupported_types_for_union_error(e):
                     raise
                 # Replace `left | right` with `typing.Union[left, right]`
                 replacement = ast.Subscript(

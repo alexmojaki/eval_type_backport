@@ -78,3 +78,17 @@ def test_other_type_error():
     ]:
         with pytest.raises(TypeError):
             check_eval(code, None)
+
+
+class Foo:
+    def __or__(self, other):
+        raise TypeError('foo')
+
+
+def test_other_or_type_error():
+    for code in [
+        'Foo() | (int | str)',
+    ]:
+        with pytest.raises(TypeError) as e:
+            check_eval(code, None)
+        assert str(e.value) == 'foo'
