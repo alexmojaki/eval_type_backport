@@ -80,14 +80,18 @@ def test_other_type_error():
             check_eval(code, None)
 
 
-class Foo:
+class FooMeta(type):
     def __or__(self, other):
         raise TypeError('foo')
 
 
+class Foo(metaclass=FooMeta):
+    pass
+
+
 def test_other_or_type_error():
     for code in [
-        'Foo() | (int | str)',
+        'Foo | (int | str)',
     ]:
         with pytest.raises(TypeError) as e:
             check_eval(code, None)
