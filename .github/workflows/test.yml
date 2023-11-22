@@ -9,10 +9,13 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    name: test ${{ matrix.os }} / ${{ matrix.python-version }}
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10', 3.11, 3.12, 'pypy3.7', 'pypy3.8', 'pypy3.9', 'pypy3.10']
+        os: [ ubuntu, macos, windows ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12', 'pypy3.7', 'pypy3.8', 'pypy3.9', 'pypy3.10' ]
+
+    runs-on: ${{ matrix.os }}-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -28,7 +31,7 @@ jobs:
     - name: Test
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        COVERALLS_FLAG_NAME: "test-${{ matrix.python-version }}"
+        COVERALLS_FLAG_NAME: "test-${{ matrix.python-version }}-${{ matrix.os }}"
         COVERALLS_PARALLEL: true
       run: |
         coverage run --source eval_type_backport -m pytest tests
