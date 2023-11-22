@@ -21,7 +21,7 @@ if [[ ! ${1} =~ ^([0-9]+)(\.[0-9]+)?(\.[0-9]+)?$ ]]; then
 fi
 
 export TAG="v${1}"
-git tag "${TAG}"
+git tag -f "${TAG}"
 git push origin HEAD "${TAG}"
 rm -rf ./build ./dist
 python -m build --sdist --wheel .
