@@ -30,6 +30,10 @@ def eval_kwargs(code: str) -> t.Iterator[t.Dict[str, t.Any]]:
 
 
 def check_eval(code: str, expected: t.Any):
+    if sys.version_info[:2] < (3, 9):
+        code_with_list = code.replace('t.List', 'list')
+        if code_with_list != code:
+            check_eval(code_with_list, expected)
     ref = t.ForwardRef(code)
     for kwargs in eval_kwargs(code):
         assert eval_type_backport(ref, **kwargs) == expected
