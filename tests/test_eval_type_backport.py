@@ -92,6 +92,13 @@ def test_eval_type_backport():
             ]
         ],
     )
+    if hasattr(t, 'Literal'):
+        check_eval('t.Literal[1]', t.Literal[1])
+        check_eval('t.Literal[1] | t.Literal[2]', t.Union[t.Literal[1], t.Literal[2]])
+        check_eval(
+            't.List[t.Literal[1] | t.Literal[2]]',
+            t.List[t.Union[t.Literal[1], t.Literal[2]]],
+        )
 
 
 def test_other_type_error():

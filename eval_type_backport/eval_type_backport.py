@@ -131,7 +131,13 @@ class BackportTransformer(ast.NodeTransformer):
 
         def visit_Subscript(self, node):
             value_node = self.visit(node.value)
-            value_val = self.eval_type(value_node)
+            try:
+                value_val = self.eval_type(value_node)
+            except TypeError:
+                # Likely typing._type_check complaining that the result isn't a type,
+                # e.g. that it's a plain `Literal`.
+                # Either way, this probably isn't one of the new generic types that needs replacing.
+                return self.generic_visit(node)
             if value_val not in new_generic_types:
                 return self.generic_visit(node)
             slice_node = self.visit(node.slice)
