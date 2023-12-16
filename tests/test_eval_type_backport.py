@@ -12,19 +12,37 @@ from eval_type_backport.eval_type_backport import new_generic_types
 str((collections, contextlib, re))
 
 
-def check_eval(code: str, expected: t.Any):
-    ref = t.ForwardRef(code)
+def eval_kwargs(code: str) -> t.Iterator[t.Dict[str, t.Any]]:
     for globalns in (None, globals(), {'t': t}, {}):
         for localns in (None, locals(), {'t': t}, {}):
-            ns = dict(globalns=globalns, localns=localns)
-            try:
-                assert eval_type_backport(ref, **ns, try_default=True) == expected
-            except NameError:
-                continue
-            assert eval_type_backport(ref, **ns, try_default=False) == expected
-            if sys.version_info >= (3, 10):
-                assert eval(code) == expected
-                assert t._eval_type(ref, **ns) == expected  # type: ignore
+            for try_default in (True, False):
+                kwargs = dict(globalns=globalns, localns=localns, try_default=try_default)
+                try:
+                    eval_type_backport(
+                        t.ForwardRef(code),
+                        **kwargs,  # type: ignore
+                    )
+                except NameError:
+                    continue
+                except Exception:
+                    pass
+                yield kwargs
+
+
+def check_eval(code: str, expected: t.Any):
+    ref = t.ForwardRef(code)
+    for kwargs in eval_kwargs(code):
+        assert eval_type_backport(ref, **kwargs) == expected
+        if sys.version_info >= (3, 10):
+            assert eval(code) == expected
+            assert (
+                t._eval_type(  # type: ignore
+                    ref,
+                    globalns=kwargs['globalns'],
+                    localns=kwargs['localns'],
+                )
+                == expected
+            )
 
 
 def test_eval_type_backport():
@@ -106,18 +124,19 @@ def test_other_or_type_error():
 
 def check_subscript(code: str, expected_old: t.Any):
     ref = t.ForwardRef(code)
-    if sys.version_info >= (3, 9):
-        expected_new = eval(code)
-        assert str(expected_new) == code
-        assert eval_type_backport(ref, globals()) == expected_new
-        args = t.get_args(expected_old)
-        origin = t.get_origin(expected_old)
-        assert args == t.get_args(expected_new)
-        assert origin == t.get_origin(expected_new)
-        assert origin[args] == expected_new != expected_old
-        assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
-    else:
-        assert eval_type_backport(ref, globals()) == expected_old
+    for kwargs in eval_kwargs(code):
+        if sys.version_info >= (3, 9):
+            expected_new = eval(code)
+            assert str(expected_new) == code
+            assert eval_type_backport(ref, **kwargs) == expected_new
+            args = t.get_args(expected_old)
+            origin = t.get_origin(expected_old)
+            assert args == t.get_args(expected_new)
+            assert origin == t.get_origin(expected_new)
+            assert origin[args] == expected_new != expected_old
+            assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
+        else:
+            assert eval_type_backport(ref, **kwargs) == expected_old
 
 
 def test_subscript():
