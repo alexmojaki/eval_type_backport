@@ -23,7 +23,7 @@ def is_backport_fixable_error(e: TypeError) -> bool:
 
 
 # From https://peps.python.org/pep-0585/#implementation
-new_generic_types = types = {
+new_generic_types = {
     tuple: 'Tuple',
     list: 'List',
     dict: 'Dict',
