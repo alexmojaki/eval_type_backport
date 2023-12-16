@@ -6,4 +6,6 @@ This is a tiny package providing a replacement for `typing._eval_type` to suppor
 
 Yes, that's very specific, and yes, `typing._eval_type` is a protected function that you shouldn't normally be using. Really this package is specifically made for https://github.com/pydantic/pydantic/issues/7873.
 
-Currently, it allows unions to be written like `int | str` which is normally only supported in Python 3.10+.
+Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
+and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
+if the original syntax is not supported in the current Python version.
