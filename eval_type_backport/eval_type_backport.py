@@ -15,7 +15,7 @@ def is_unsupported_types_for_union_error(e: TypeError) -> bool:
 
 
 def is_not_subscriptable_error(e: TypeError) -> bool:
-    return str(e).endswith("' object is not subscriptable")
+    return "' object is not subscriptable" in str(e)
 
 
 def is_backport_fixable_error(e: TypeError) -> bool:
