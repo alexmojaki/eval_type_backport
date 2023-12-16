@@ -9,19 +9,19 @@ import pytest
 from eval_type_backport import eval_type_backport
 from eval_type_backport.eval_type_backport import new_generic_types
 
-str((collections, contextlib, re))
+str((collections, contextlib, re))  # mark these as used (by eval calls)
 
 
-def eval_kwargs(code: str) -> t.Iterator[t.Dict[str, t.Any]]:
+def eval_kwargs(code: str):
     for globalns in (None, globals(), {'t': t}, {}):
         for localns in (None, locals(), {'t': t}, {}):
             for try_default in (True, False):
-                kwargs = dict(globalns=globalns, localns=localns, try_default=try_default)
+                kwargs = t.cast(
+                    t.Dict[str, t.Any],
+                    dict(globalns=globalns, localns=localns, try_default=try_default),
+                )
                 try:
-                    eval_type_backport(
-                        t.ForwardRef(code),
-                        **kwargs,  # type: ignore
-                    )
+                    eval_type_backport(t.ForwardRef(code), **kwargs)
                 except NameError:
                     continue
                 except Exception:
