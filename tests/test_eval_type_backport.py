@@ -1,9 +1,15 @@
+import collections
+import contextlib
+import re
 import sys
 import typing as t
 
 import pytest
 
 from eval_type_backport import eval_type_backport
+from eval_type_backport.eval_type_backport import new_generic_types
+
+str((collections, contextlib, re))
 
 
 def check_eval(code: str, expected: t.Any):
@@ -96,3 +102,182 @@ def test_other_or_type_error():
         with pytest.raises(TypeError) as e:
             check_eval(code, None)
         assert str(e.value) == 'foo'
+
+
+def check_subscript(code: str, expected_old: t.Any):
+    ref = t.ForwardRef(code)
+    if sys.version_info >= (3, 9):
+        expected_new = eval(code)
+        assert str(expected_new) == code
+        assert eval_type_backport(ref, globals()) == expected_new
+        args = t.get_args(expected_old)
+        origin = t.get_origin(expected_old)
+        assert args == t.get_args(expected_new)
+        assert origin == t.get_origin(expected_new)
+        assert origin[args] == expected_new != expected_old
+        assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
+    else:
+        assert eval_type_backport(ref, globals()) == expected_old
+
+
+def test_subscript():
+    check_subscript(
+        'tuple[int]',
+        t.Tuple[int],
+    )
+    check_subscript(
+        'tuple[int, int]',
+        t.Tuple[int, int],
+    )
+    check_subscript(
+        'tuple[int, str]',
+        t.Tuple[int, str],
+    )
+    check_subscript(
+        'tuple[int, ...]',
+        t.Tuple[int, ...],
+    )
+    check_subscript(
+        'list[int]',
+        t.List[int],
+    )
+    check_subscript(
+        'dict[int, str]',
+        t.Dict[int, str],
+    )
+    check_subscript(
+        'set[int]',
+        t.Set[int],
+    )
+    check_subscript(
+        'frozenset[int]',
+        t.FrozenSet[int],
+    )
+    check_subscript(
+        'type[int]',
+        t.Type[int],
+    )
+    check_subscript(
+        'collections.deque[int]',
+        t.Deque[int],
+    )
+    check_subscript(
+        'collections.defaultdict[int, str]',
+        t.DefaultDict[int, str],
+    )
+    check_subscript(
+        'collections.abc.Set[int]',
+        t.AbstractSet[int],
+    )
+    check_subscript(
+        'contextlib.AbstractContextManager[int]',
+        t.ContextManager[int],
+    )
+    check_subscript(
+        'contextlib.AbstractAsyncContextManager[int]',
+        t.AsyncContextManager[int],
+    )
+    check_subscript(
+        'collections.OrderedDict[int, str]',
+        t.OrderedDict[int, str],
+    )
+    check_subscript(
+        'collections.Counter[int]',
+        t.Counter[int],
+    )
+    check_subscript(
+        'collections.ChainMap[int, str]',
+        t.ChainMap[int, str],
+    )
+    check_subscript(
+        'collections.abc.Awaitable[int]',
+        t.Awaitable[int],
+    )
+    check_subscript(
+        'collections.abc.Coroutine[int, str, float]',
+        t.Coroutine[int, str, float],
+    )
+    check_subscript(
+        'collections.abc.AsyncIterable[int]',
+        t.AsyncIterable[int],
+    )
+    check_subscript(
+        'collections.abc.AsyncIterator[int]',
+        t.AsyncIterator[int],
+    )
+    check_subscript(
+        'collections.abc.AsyncGenerator[int, str]',
+        t.AsyncGenerator[int, str],
+    )
+    check_subscript(
+        'collections.abc.Iterable[int]',
+        t.Iterable[int],
+    )
+    check_subscript(
+        'collections.abc.Iterator[int]',
+        t.Iterator[int],
+    )
+    check_subscript(
+        'collections.abc.Generator[int, str, float]',
+        t.Generator[int, str, float],
+    )
+    check_subscript(
+        'collections.abc.Reversible[int]',
+        t.Reversible[int],
+    )
+    check_subscript(
+        'collections.abc.Container[int]',
+        t.Container[int],
+    )
+    check_subscript(
+        'collections.abc.Collection[int]',
+        t.Collection[int],
+    )
+    check_subscript(
+        'collections.abc.Callable[[int], str]',
+        t.Callable[[int], str],
+    )
+    check_subscript(
+        'collections.abc.MutableSet[int]',
+        t.MutableSet[int],
+    )
+    check_subscript(
+        'collections.abc.Mapping[int, str]',
+        t.Mapping[int, str],
+    )
+    check_subscript(
+        'collections.abc.MutableMapping[int, str]',
+        t.MutableMapping[int, str],
+    )
+    check_subscript(
+        'collections.abc.Sequence[int]',
+        t.Sequence[int],
+    )
+    check_subscript(
+        'collections.abc.MutableSequence[int]',
+        t.MutableSequence[int],
+    )
+    check_subscript(
+        'collections.abc.MappingView[int]',
+        t.MappingView[int],  # type: ignore
+    )
+    check_subscript(
+        'collections.abc.KeysView[int]',
+        t.KeysView[int],
+    )
+    check_subscript(
+        'collections.abc.ItemsView[int, str]',
+        t.ItemsView[int, str],
+    )
+    check_subscript(
+        'collections.abc.ValuesView[int]',
+        t.ValuesView[int],
+    )
+    check_subscript(
+        're.Pattern[str]',
+        t.Pattern[str],
+    )
+    check_subscript(
+        're.Match[str]',
+        t.Match[str],
+    )
