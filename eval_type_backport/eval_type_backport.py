@@ -22,6 +22,7 @@ def is_backport_fixable_error(e: TypeError) -> bool:
     return is_unsupported_types_for_union_error(e) or is_not_subscriptable_error(e)
 
 
+# From https://peps.python.org/pep-0585/#implementation
 new_generic_types = types = {
     tuple: 'Tuple',
     list: 'List',
@@ -70,7 +71,9 @@ new_generic_types = types = {
 
 class BackportTransformer(ast.NodeTransformer):
     """
-    Transforms `X | Y` into `Union[X, Y]` if `X | Y` is not supported.
+    Transforms `X | Y` into `typing.Union[X, Y]`
+    and `list[X]` into `typing.List[X]` etc.
+    if the original syntax is not supported.
     """
 
     def __init__(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None):
@@ -163,8 +166,9 @@ def eval_type_backport(
 ) -> Any:
     """
     Like `typing._eval_type`, but lets older Python versions use newer typing features.
-    Currently this just means that `X | Y` is converted to `Union[X, Y]` if `X | Y` is not supported.
-    This would also be the place to add support for `list[int]` instead of `List[int]` etc.
+    Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
+    and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
+    if the original syntax is not supported in the current Python version.
     """
     if not try_default:
         return _eval_direct(value, globalns, localns)
