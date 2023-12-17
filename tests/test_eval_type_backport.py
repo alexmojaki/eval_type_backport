@@ -337,6 +337,6 @@ def test_subscript():
 
 def test_copy_forward_ref_attrs():
     ref = t.ForwardRef(
-        't.ClassVar[int | str]', is_argument=False, **({} if sys.version_info[:2] <= (3, 9) else {'is_class': True})
+        't.ClassVar[int | str]', is_argument=False, **({} if sys.version_info < (3, 9, 8) else {'is_class': True})
     )
     eval_type_backport(ref, globalns=globals(), localns=locals())
