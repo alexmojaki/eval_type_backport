@@ -333,3 +333,8 @@ def test_subscript():
         're.Match[str]',
         t.Match[str],
     )
+
+
+def test_copy_forward_ref_attrs():
+    ref = t.ForwardRef('t.ClassVar[int | str]', is_argument=False)
+    eval_type_backport(ref, globalns=globals(), localns=locals())
