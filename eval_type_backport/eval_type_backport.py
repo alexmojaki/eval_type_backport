@@ -93,7 +93,7 @@ class BackportTransformer(ast.NodeTransformer):
         self.globalns = globalns
         self.localns = {**localns, self.typing_name: typing}
 
-    def eval_type(self, node: ast.AST) -> Any:
+    def eval_type(self, node: ast.Expression | ast.expr) -> Any:
         if not isinstance(node, ast.Expression):
             node = ast.copy_location(ast.Expression(node), node)
         ref = typing.ForwardRef(ast.dump(node))
@@ -103,11 +103,11 @@ class BackportTransformer(ast.NodeTransformer):
         )
 
     def visit_BinOp(self, node) -> ast.BinOp | ast.Subscript:
+        node = self.generic_visit(node)
+        assert isinstance(node, ast.BinOp)
         if isinstance(node.op, ast.BitOr):
-            left_node = self.visit(node.left)
-            right_node = self.visit(node.right)
-            left_val = self.eval_type(left_node)
-            right_val = self.eval_type(right_node)
+            left_val = self.eval_type(node.left)
+            right_val = self.eval_type(node.right)
             try:
                 _ = left_val | right_val
             except TypeError as e:
@@ -120,7 +120,7 @@ class BackportTransformer(ast.NodeTransformer):
                         attr='Union',
                         ctx=ast.Load(),
                     ),
-                    slice=ast.Index(value=ast.Tuple(elts=[left_node, right_node], ctx=ast.Load())),
+                    slice=ast.Index(value=ast.Tuple(elts=[node.left, node.right], ctx=ast.Load())),
                     ctx=ast.Load(),
                 )
                 return ast.fix_missing_locations(replacement)
@@ -129,25 +129,25 @@ class BackportTransformer(ast.NodeTransformer):
 
     if sys.version_info[:2] < (3, 9):
 
-        def visit_Subscript(self, node):
-            value_node = self.visit(node.value)
+        def visit_Subscript(self, node) -> ast.Subscript:
+            node = self.generic_visit(node)
+            assert isinstance(node, ast.Subscript)
             try:
-                value_val = self.eval_type(value_node)
+                value_val = self.eval_type(node.value)
             except TypeError:
                 # Likely typing._type_check complaining that the result isn't a type,
                 # e.g. that it's a plain `Literal`.
                 # Either way, this probably isn't one of the new generic types that needs replacing.
-                return self.generic_visit(node)
+                return node
             if value_val not in new_generic_types:
-                return self.generic_visit(node)
-            slice_node = self.visit(node.slice)
+                return node
             replacement = ast.Subscript(
                 value=ast.Attribute(
                     value=ast.Name(id=self.typing_name, ctx=ast.Load()),
                     attr=new_generic_types[value_val],
                     ctx=ast.Load(),
                 ),
-                slice=slice_node,
+                slice=node.slice,
                 ctx=ast.Load(),
             )
             return ast.fix_missing_locations(replacement)

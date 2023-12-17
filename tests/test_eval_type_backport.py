@@ -13,6 +13,7 @@ str((collections, contextlib, re))  # mark these as used (by eval calls)
 
 
 def eval_kwargs(code: str):
+    result = []
     for globalns in (None, globals(), {'t': t}, {}):
         for localns in (None, locals(), {'t': t}, {}):
             for try_default in (True, False):
@@ -26,7 +27,9 @@ def eval_kwargs(code: str):
                     continue
                 except Exception:
                     pass
-                yield kwargs
+                result.append(kwargs)
+    assert len(result) >= 8
+    return result
 
 
 def check_eval(code: str, expected: t.Any):
@@ -131,6 +134,25 @@ def test_other_or_type_error():
         with pytest.raises(TypeError) as e:
             check_eval(code, None)
         assert str(e.value) == 'foo'
+
+
+class BarMeta(type):
+    def __or__(self, other):
+        return t.Dict[self, other]  # type: ignore
+
+    def __ror__(self, other):
+        return t.Dict[other, self]  # type: ignore
+
+
+class Bar(metaclass=BarMeta):
+    pass
+
+
+def test_working_or():
+    check_eval(
+        't.List[(Bar | t.List[int]) | (str | Bar)] | float | t.List[Bar]',
+        t.Union[t.List[t.Union[t.Dict[Bar, t.List[int]], t.Dict[str, Bar]]], float, t.List[Bar]],
+    )
 
 
 def check_subscript(code: str, expected_old: t.Any):
