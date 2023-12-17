@@ -93,10 +93,15 @@ class BackportTransformer(ast.NodeTransformer):
         self.globalns = globalns
         self.localns = {**localns, self.typing_name: typing}
 
-    def eval_type(self, node: ast.Expression | ast.expr) -> Any:
+    def eval_type(self, node: ast.Expression | ast.expr, *, original_ref: typing.ForwardRef | None = None) -> Any:
         if not isinstance(node, ast.Expression):
             node = ast.copy_location(ast.Expression(node), node)
         ref = typing.ForwardRef(ast.dump(node))
+        if original_ref:
+            for attr in 'is_argument is_class module'.split():
+                attr = f'__forward_{attr}__'
+                if hasattr(original_ref, attr):
+                    setattr(ref, attr, getattr(original_ref, attr))
         ref.__forward_code__ = compile(node, '<node>', 'eval')
         return typing._eval_type(  # type: ignore
             ref, self.globalns, self.localns
@@ -161,7 +166,7 @@ def _eval_direct(
     tree = ast.parse(value.__forward_arg__, mode='eval')
     transformer = BackportTransformer(globalns, localns)
     tree = transformer.visit(tree)
-    return transformer.eval_type(tree)
+    return transformer.eval_type(tree, original_ref=value)
 
 
 def eval_type_backport(
