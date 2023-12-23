@@ -37,7 +37,7 @@ new_generic_types = {
     contextlib.AbstractAsyncContextManager: 'AsyncContextManager',
     **{
         k: k.__name__
-        for k in [
+        for k in (
             collections.OrderedDict,
             collections.Counter,
             collections.ChainMap,
@@ -64,7 +64,7 @@ new_generic_types = {
             collections.abc.ValuesView,
             re.Pattern,
             re.Match,
-        ]
+        )
     },
 }
 
