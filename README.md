@@ -9,3 +9,17 @@ Yes, that's very specific, and yes, `typing._eval_type` is a protected function 
 Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
 and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
 if the original syntax is not supported in the current Python version.
+
+## Install
+
+From PyPI:
+
+```shell
+pip install eval-type-backport
+```
+
+or with Conda:
+
+```shell
+conda install -c conda-forge eval-type-backport
+```
