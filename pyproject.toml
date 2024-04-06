@@ -14,7 +14,7 @@ venv = "venv"
 line-length = 120
 flake8-quotes = {inline-quotes = 'single', multiline-quotes = 'double'}
 mccabe = { max-complexity = 14 }
-target-version = "py37"
+target-version = "py38"
 
 [tool.ruff.format]
 quote-style = 'single'
