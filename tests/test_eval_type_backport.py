@@ -151,7 +151,11 @@ class Bar(metaclass=BarMeta):
 def test_working_or():
     check_eval(
         't.List[(Bar | t.List[int]) | (str | Bar)] | float | t.List[Bar]',
-        t.Union[t.List[t.Union[t.Dict[Bar, t.List[int]], t.Dict[str, Bar]]], float, t.List[Bar]],
+        t.Union[
+            t.List[t.Union[t.Dict[Bar, t.List[int]], t.Dict[str, Bar]]],
+            float,
+            t.List[Bar],
+        ],
     )
 
 
@@ -337,6 +341,8 @@ def test_subscript():
 
 def test_copy_forward_ref_attrs():
     ref = t.ForwardRef(
-        't.ClassVar[int | str]', is_argument=False, **({} if sys.version_info < (3, 9, 8) else {'is_class': True})
+        't.ClassVar[int | str]',
+        is_argument=False,
+        **({} if sys.version_info < (3, 9, 8) else {'is_class': True}),
     )
     eval_type_backport(ref, globalns=globals(), localns=locals())
