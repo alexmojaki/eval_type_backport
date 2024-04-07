@@ -11,7 +11,7 @@ venvPath = "."
 venv = "venv"
 
 [tool.ruff]
-line-length = 120
+line-length = 89
 flake8-quotes = {inline-quotes = 'single', multiline-quotes = 'double'}
 mccabe = { max-complexity = 14 }
 target-version = "py37"

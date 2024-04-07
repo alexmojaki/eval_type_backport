@@ -93,7 +93,12 @@ class BackportTransformer(ast.NodeTransformer):
         self.globalns = globalns
         self.localns = {**localns, self.typing_name: typing}
 
-    def eval_type(self, node: ast.Expression | ast.expr, *, original_ref: typing.ForwardRef | None = None) -> Any:
+    def eval_type(
+        self,
+        node: ast.Expression | ast.expr,
+        *,
+        original_ref: typing.ForwardRef | None = None,
+    ) -> Any:
         if not isinstance(node, ast.Expression):
             node = ast.copy_location(ast.Expression(node), node)
         ref = typing.ForwardRef(ast.dump(node))
@@ -125,7 +130,9 @@ class BackportTransformer(ast.NodeTransformer):
                         attr='Union',
                         ctx=ast.Load(),
                     ),
-                    slice=ast.Index(value=ast.Tuple(elts=[node.left, node.right], ctx=ast.Load())),
+                    slice=ast.Index(
+                        value=ast.Tuple(elts=[node.left, node.right], ctx=ast.Load())
+                    ),
                     ctx=ast.Load(),
                 )
                 return ast.fix_missing_locations(replacement)
@@ -142,7 +149,8 @@ class BackportTransformer(ast.NodeTransformer):
             except TypeError:
                 # Likely typing._type_check complaining that the result isn't a type,
                 # e.g. that it's a plain `Literal`.
-                # Either way, this probably isn't one of the new generic types that needs replacing.
+                # Either way, this probably isn't one of the new generic types
+                # that needs replacing.
                 return node
             if value_val not in new_generic_types:
                 return node
