@@ -1,6 +1,6 @@
-import collections
-import contextlib
-import re
+import collections as collections  # mark as used (by eval calls)
+import contextlib as contextlib  # mark as used (by eval calls)
+import re as re  # mark as used (by eval calls)
 import sys
 import typing as t
 
@@ -8,8 +8,6 @@ import pytest
 
 from eval_type_backport import eval_type_backport
 from eval_type_backport.eval_type_backport import new_generic_types
-
-str((collections, contextlib, re))  # mark these as used (by eval calls)
 
 
 def eval_kwargs(code: str):
