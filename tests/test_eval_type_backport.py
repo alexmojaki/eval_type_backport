@@ -1,15 +1,21 @@
+from __future__ import annotations
+
 import collections
 import contextlib
+import importlib
 import re
 import sys
 import typing as t
 
 import pytest
 
-from eval_type_backport import eval_type_backport
-from eval_type_backport.eval_type_backport import new_generic_types
+from eval_type_backport import ForwardRef, eval_type_backport
+from eval_type_backport.eval_type_backport import _eval_direct, new_generic_types
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
+
+
+eval_type = t._eval_type  # type: ignore[attr-defined]
 
 
 def eval_kwargs(code: str):
@@ -43,7 +49,7 @@ def check_eval(code: str, expected: t.Any):
         if sys.version_info >= (3, 10):
             assert eval(code) == expected
             assert (
-                t._eval_type(  # type: ignore
+                eval_type(
                     ref,
                     globalns=kwargs['globalns'],
                     localns=kwargs['localns'],
@@ -346,3 +352,31 @@ def test_copy_forward_ref_attrs():
         **({} if sys.version_info < (3, 9, 8) else {'is_class': True}),
     )
     eval_type_backport(ref, globalns=globals(), localns=locals())
+
+
+def test_forward_ref_calls_eval_direct(monkeypatch: pytest.MonkeyPatch):
+    eval_direct_called: bool
+
+    def _eval_direct_wrapper(
+        value: t.ForwardRef,
+        globalns: dict[str, t.Any] | None = None,
+        localns: dict[str, t.Any] | None = None,
+    ):
+        nonlocal eval_direct_called
+        eval_direct_called = True
+        return _eval_direct(value, globalns, localns)
+
+    monkeypatch.setattr(
+        importlib.import_module('eval_type_backport.eval_type_backport'),
+        '_eval_direct',
+        _eval_direct_wrapper,
+    )
+
+    for ref_arg, should_call_eval_direct in (
+        ('int', False),
+        ('list[int]', sys.version_info < (3, 9)),
+        ('int | str', sys.version_info < (3, 10)),
+    ):
+        eval_direct_called = False
+        eval_type(ForwardRef(ref_arg), None, None)
+        assert eval_direct_called is should_call_eval_direct

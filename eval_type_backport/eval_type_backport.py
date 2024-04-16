@@ -166,6 +166,34 @@ class BackportTransformer(ast.NodeTransformer):
             return ast.fix_missing_locations(replacement)
 
 
+class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
+    """
+    Like `typing.ForwardRef`, but lets older Python versions use newer typing features.
+    Specifically, when evaluated, this transforms `X | Y` into `typing.Union[X, Y]`
+    and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
+    if the original syntax is not supported in the current Python version.
+    """
+
+    def _evaluate(
+        self,
+        globalns: dict[str, Any] | None,
+        localns: dict[str, Any] | None,
+        recursive_guard: frozenset[str] | None = None,
+    ) -> Any:
+        try:
+            return super()._evaluate(
+                globalns,
+                localns,
+                # assume `recursive_guard` is provided by typing,
+                # so if it's not None, it is supported in typing.ForwardRef
+                *() if recursive_guard is None else (recursive_guard,),
+            )
+        except TypeError as e:
+            if not is_backport_fixable_error(e):
+                raise
+        return _eval_direct(self, globalns, localns)
+
+
 def _eval_direct(
     value: typing.ForwardRef,
     globalns: dict[str, Any] | None = None,
