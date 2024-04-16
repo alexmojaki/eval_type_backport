@@ -122,6 +122,8 @@ def test_other_type_error():
     ]:
         with pytest.raises(TypeError):
             check_eval(code, None)
+        with pytest.raises(TypeError):
+            eval_type(ForwardRef(code), None, None)
 
 
 class FooMeta(type):
