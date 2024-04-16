@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections
 import contextlib
-import importlib
 import re
 import sys
 import typing as t
@@ -10,7 +9,7 @@ import typing as t
 import pytest
 
 from eval_type_backport import ForwardRef, eval_type_backport
-from eval_type_backport.eval_type_backport import _eval_direct, new_generic_types
+from eval_type_backport.eval_type_backport import new_generic_types
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
 
@@ -43,19 +42,21 @@ def check_eval(code: str, expected: t.Any):
         code_with_list = code.replace('t.List', 'list')
         if code_with_list != code:
             check_eval(code_with_list, expected)
-    ref = t.ForwardRef(code)
+    typing_ref = t.ForwardRef(code)
+    backport_ref = ForwardRef(code)
     for kwargs in eval_kwargs(code):
-        assert eval_type_backport(ref, **kwargs) == expected
-        if sys.version_info >= (3, 10):
-            assert eval(code) == expected
-            assert (
-                eval_type(
-                    ref,
-                    globalns=kwargs['globalns'],
-                    localns=kwargs['localns'],
+        for ref in typing_ref, backport_ref:
+            assert eval_type_backport(ref, **kwargs) == expected
+            if sys.version_info >= (3, 10):
+                assert eval(code) == expected
+                assert (
+                    eval_type(
+                        ref,
+                        globalns=kwargs['globalns'],
+                        localns=kwargs['localns'],
+                    )
+                    == expected
                 )
-                == expected
-            )
 
 
 def test_eval_type_backport():
@@ -168,20 +169,22 @@ def test_working_or():
 
 
 def check_subscript(code: str, expected_old: t.Any):
-    ref = t.ForwardRef(code)
+    typing_ref = t.ForwardRef(code)
+    backport_ref = ForwardRef(code)
     for kwargs in eval_kwargs(code):
-        if sys.version_info >= (3, 9):
-            expected_new = eval(code)
-            assert str(expected_new) == code
-            assert eval_type_backport(ref, **kwargs) == expected_new
-            args = t.get_args(expected_old)
-            origin = t.get_origin(expected_old)
-            assert args == t.get_args(expected_new)
-            assert origin == t.get_origin(expected_new)
-            assert origin[args] == expected_new != expected_old
-            assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
-        else:
-            assert eval_type_backport(ref, **kwargs) == expected_old
+        for ref in typing_ref, backport_ref:
+            if sys.version_info >= (3, 9):
+                expected_new = eval(code)
+                assert str(expected_new) == code
+                assert eval_type_backport(ref, **kwargs) == expected_new
+                args = t.get_args(expected_old)
+                origin = t.get_origin(expected_old)
+                assert args == t.get_args(expected_new)
+                assert origin == t.get_origin(expected_new)
+                assert origin[args] == expected_new != expected_old
+                assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
+            else:
+                assert eval_type_backport(ref, **kwargs) == expected_old
 
 
 def test_subscript():
@@ -354,31 +357,3 @@ def test_copy_forward_ref_attrs():
         **({} if sys.version_info < (3, 9, 8) else {'is_class': True}),
     )
     eval_type_backport(ref, globalns=globals(), localns=locals())
-
-
-def test_forward_ref_calls_eval_direct(monkeypatch: pytest.MonkeyPatch):
-    eval_direct_called: bool
-
-    def _eval_direct_wrapper(
-        value: t.ForwardRef,
-        globalns: dict[str, t.Any] | None = None,
-        localns: dict[str, t.Any] | None = None,
-    ):
-        nonlocal eval_direct_called
-        eval_direct_called = True
-        return _eval_direct(value, globalns, localns)
-
-    monkeypatch.setattr(
-        importlib.import_module('eval_type_backport.eval_type_backport'),
-        '_eval_direct',
-        _eval_direct_wrapper,
-    )
-
-    for ref_arg, should_call_eval_direct in (
-        ('int', False),
-        ('list[int]', sys.version_info < (3, 9)),
-        ('int | str', sys.version_info < (3, 10)),
-    ):
-        eval_direct_called = False
-        eval_type(ForwardRef(ref_arg), None, None)
-        assert eval_direct_called is should_call_eval_direct
