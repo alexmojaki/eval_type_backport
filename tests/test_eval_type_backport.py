@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import contextlib
 import re
@@ -6,10 +8,13 @@ import typing as t
 
 import pytest
 
-from eval_type_backport import eval_type_backport
+from eval_type_backport import ForwardRef, eval_type_backport
 from eval_type_backport.eval_type_backport import new_generic_types
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
+
+
+eval_type = t._eval_type  # type: ignore[attr-defined]
 
 
 def eval_kwargs(code: str):
@@ -37,19 +42,21 @@ def check_eval(code: str, expected: t.Any):
         code_with_list = code.replace('t.List', 'list')
         if code_with_list != code:
             check_eval(code_with_list, expected)
-    ref = t.ForwardRef(code)
+    typing_ref = t.ForwardRef(code)
+    backport_ref = ForwardRef(code)
     for kwargs in eval_kwargs(code):
-        assert eval_type_backport(ref, **kwargs) == expected
-        if sys.version_info >= (3, 10):
-            assert eval(code) == expected
-            assert (
-                t._eval_type(  # type: ignore
-                    ref,
-                    globalns=kwargs['globalns'],
-                    localns=kwargs['localns'],
+        for ref in typing_ref, backport_ref:
+            assert eval_type_backport(ref, **kwargs) == expected
+            if sys.version_info >= (3, 10):
+                assert eval(code) == expected
+                assert (
+                    eval_type(
+                        ref,
+                        globalns=kwargs['globalns'],
+                        localns=kwargs['localns'],
+                    )
+                    == expected
                 )
-                == expected
-            )
 
 
 def test_eval_type_backport():
@@ -116,6 +123,8 @@ def test_other_type_error():
     ]:
         with pytest.raises(TypeError):
             check_eval(code, None)
+        with pytest.raises(TypeError):
+            eval_type(ForwardRef(code), None, None)
 
 
 class FooMeta(type):
@@ -160,20 +169,22 @@ def test_working_or():
 
 
 def check_subscript(code: str, expected_old: t.Any):
-    ref = t.ForwardRef(code)
+    typing_ref = t.ForwardRef(code)
+    backport_ref = ForwardRef(code)
     for kwargs in eval_kwargs(code):
-        if sys.version_info >= (3, 9):
-            expected_new = eval(code)
-            assert str(expected_new) == code
-            assert eval_type_backport(ref, **kwargs) == expected_new
-            args = t.get_args(expected_old)
-            origin = t.get_origin(expected_old)
-            assert args == t.get_args(expected_new)
-            assert origin == t.get_origin(expected_new)
-            assert origin[args] == expected_new != expected_old
-            assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
-        else:
-            assert eval_type_backport(ref, **kwargs) == expected_old
+        for ref in typing_ref, backport_ref:
+            if sys.version_info >= (3, 9):
+                expected_new = eval(code)
+                assert str(expected_new) == code
+                assert eval_type_backport(ref, **kwargs) == expected_new
+                args = t.get_args(expected_old)
+                origin = t.get_origin(expected_old)
+                assert args == t.get_args(expected_new)
+                assert origin == t.get_origin(expected_new)
+                assert origin[args] == expected_new != expected_old
+                assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
+            else:
+                assert eval_type_backport(ref, **kwargs) == expected_old
 
 
 def test_subscript():
