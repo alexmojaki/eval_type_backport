@@ -8,6 +8,7 @@ import sys
 import typing
 import uuid
 from typing import Any
+from collections.abc import Mapping
 
 
 def is_unsupported_types_for_union_error(e: TypeError) -> bool:
@@ -76,7 +77,7 @@ class BackportTransformer(ast.NodeTransformer):
     if the original syntax is not supported.
     """
 
-    def __init__(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None):
+    def __init__(self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None):
         # This logic for handling Nones is copied from typing.ForwardRef._evaluate
         if globalns is None and localns is None:
             globalns = localns = {}
@@ -177,7 +178,7 @@ class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
     def _evaluate(
         self,
         globalns: dict[str, Any] | None,
-        localns: dict[str, Any] | None,
+        localns: Mapping[str, Any] | None,
         recursive_guard: frozenset[str] | None = None,
     ) -> Any:
         try:
@@ -197,7 +198,7 @@ class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
 def _eval_direct(
     value: typing.ForwardRef,
     globalns: dict[str, Any] | None = None,
-    localns: dict[str, Any] | None = None,
+    localns: Mapping[str, Any] | None = None,
 ):
     tree = ast.parse(value.__forward_arg__, mode='eval')
     transformer = BackportTransformer(globalns, localns)
@@ -208,7 +209,7 @@ def _eval_direct(
 def eval_type_backport(
     value: Any,
     globalns: dict[str, Any] | None = None,
-    localns: dict[str, Any] | None = None,
+    localns: Mapping[str, Any] | None = None,
     try_default: bool = True,
 ) -> Any:
     """
