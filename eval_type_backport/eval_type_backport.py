@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import collections.abc
 import contextlib
+import functools
 import re
 import sys
 import typing
@@ -175,19 +176,20 @@ class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
     if the original syntax is not supported in the current Python version.
     """
 
+    @functools.wraps(typing.ForwardRef._evaluate)
     def _evaluate(
         self,
         globalns: dict[str, Any] | None,
         localns: Mapping[str, Any] | None,
-        recursive_guard: frozenset[str] | None = None,
+        *args: Any,
+        **kwargs: Any,
     ) -> Any:
         try:
             return super()._evaluate(
                 globalns,
                 localns,
-                # assume `recursive_guard` is provided by typing,
-                # so if it's not None, it is supported in typing.ForwardRef
-                *() if recursive_guard is None else (recursive_guard,),
+                *args,
+                **kwargs
             )
         except TypeError as e:
             if not is_backport_fixable_error(e):
