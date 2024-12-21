@@ -168,6 +168,9 @@ class BackportTransformer(ast.NodeTransformer):
             return ast.fix_missing_locations(replacement)
 
 
+original_evaluate = typing.ForwardRef._evaluate
+
+
 class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
     """
     Like `typing.ForwardRef`, but lets older Python versions use newer typing features.
@@ -176,7 +179,7 @@ class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
     if the original syntax is not supported in the current Python version.
     """
 
-    @functools.wraps(typing.ForwardRef._evaluate)
+    @functools.wraps(original_evaluate)
     def _evaluate(
         self,
         globalns: dict[str, Any] | None,
@@ -185,7 +188,8 @@ class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
         **kwargs: Any,
     ) -> Any:
         try:
-            return super()._evaluate(
+            return original_evaluate(
+                self,
                 globalns,
                 localns,
                 *args,
