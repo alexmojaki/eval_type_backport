@@ -78,17 +78,17 @@ class BackportTransformer(ast.NodeTransformer):
     if the original syntax is not supported.
     """
 
-    def __init__(self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None):
+    def __init__(
+        self, globalns: dict[str, Any] | None, localns: Mapping[str, Any] | None
+    ):
         # This logic for handling Nones is copied from typing.ForwardRef._evaluate
         if globalns is None and localns is None:
             globalns = localns = {}
         elif globalns is None:
             # apparently pyright doesn't infer this automatically
             assert localns is not None
-            globalns = localns
+            globalns = {**localns}
         elif localns is None:
-            # apparently pyright doesn't infer this automatically
-            assert globalns is not None
             localns = globalns
 
         self.typing_name = f'typing_{uuid.uuid4().hex}'
@@ -183,18 +183,12 @@ class ForwardRef(typing.ForwardRef, _root=True):  # type: ignore[call-arg,misc]
     def _evaluate(
         self,
         globalns: dict[str, Any] | None,
-        localns: Mapping[str, Any] | None,
+        localns: dict[str, Any] | None,
         *args: Any,
         **kwargs: Any,
     ) -> Any:
         try:
-            return original_evaluate(
-                self,
-                globalns,
-                localns,
-                *args,
-                **kwargs
-            )
+            return original_evaluate(self, globalns, localns, *args, **kwargs)
         except TypeError as e:
             if not is_backport_fixable_error(e):
                 raise

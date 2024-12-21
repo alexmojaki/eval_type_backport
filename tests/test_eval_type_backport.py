@@ -238,11 +238,15 @@ def test_subscript():
     )
     # Python 3.13 added a second type parameter to typing.ContextManager which defaults to bool | None.
     check_subscript(
-        'contextlib.AbstractContextManager[int]' if sys.version_info < (3, 13) else 'contextlib.AbstractContextManager[int, bool | None]',
+        'contextlib.AbstractContextManager[int]'
+        if sys.version_info < (3, 13)
+        else 'contextlib.AbstractContextManager[int, bool | None]',
         t.ContextManager[int],
     )
     check_subscript(
-        'contextlib.AbstractAsyncContextManager[int]' if sys.version_info < (3, 13) else 'contextlib.AbstractAsyncContextManager[int, bool | None]',
+        'contextlib.AbstractAsyncContextManager[int]'
+        if sys.version_info < (3, 13)
+        else 'contextlib.AbstractAsyncContextManager[int, bool | None]',
         t.AsyncContextManager[int],
     )
     check_subscript(
