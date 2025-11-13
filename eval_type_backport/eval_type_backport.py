@@ -214,10 +214,7 @@ def _eval_direct(
     return transformer.eval_type(tree, original_ref=value)
 
 
-if sys.version_info[:2] >= (3, 14):
-    from functools import wraps
-
-    @wraps(typing._eval_type)  # type: ignore
+if sys.version_info[:2] >= (3, 10):
     def eval_type_backport(
         value: Any,
         globalns: dict[str, Any] | None = None,
@@ -226,6 +223,7 @@ if sys.version_info[:2] >= (3, 14):
         *args: Any,
         **kwargs: Any,
     ) -> Any:
+        """Alias to typing._eval_type (Python 3.10+)."""
         return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
 
 else:
