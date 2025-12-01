@@ -14,14 +14,25 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu, macos, windows ]
+        eol: [ false ]
         python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14', 'pypy3.8', 'pypy3.9', 'pypy3.10' ]
+        include:
+        - os: ubuntu
+          python-version: '3.7'
+          eol: true
 
     runs-on: ${{ matrix.os }}-latest
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }} (GitHub)
+      if: ${{ !matrix.eol }}
       uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }} (deadsnakes)
+      if: ${{ matrix.eol }}
+      uses: deadsnakes/action@v3.2.0
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
