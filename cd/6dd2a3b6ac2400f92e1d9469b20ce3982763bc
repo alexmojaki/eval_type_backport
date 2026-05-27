@@ -1,0 +1,14 @@
+pyproject.toml
+  h_d9dd17644dded9 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cd6dd2a3b6ac2400f92e1d9469b20ce3982763bc",
+  "prompts": {},
+  "humans": {
+    "h_d9dd17644dded9": {
+      "author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  }
+}
