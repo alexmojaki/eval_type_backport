@@ -1,0 +1,41 @@
+tests/test_eval_type_backport.py
+  s_42ffeaa761b354::t_7998954787e243 11-12,366-368,370-385
+  s_42ffeaa761b354::t_49344e5e20dbf1 369
+eval_type_backport/__init__.py
+  h_d9dd17644dded9 1,9
+eval_type_backport/eval_type_backport.py
+  s_42ffeaa761b354::t_8ee54af4d0e7e6 12,214-227,231-234,236-237,239-240
+  s_42ffeaa761b354::t_577a630ad2c713 228,235
+  ai_agent 238
+  h_d9dd17644dded9 245-246
+  s_d64c343850fa3a::t_239422b9a2edc9 247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0fc195e7612940cb2a9397feb4386891843d76c3",
+  "prompts": {},
+  "humans": {
+    "h_d9dd17644dded9": {
+      "author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_42ffeaa761b354": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e695a-cc9e-7203-bc27-76c35e70f27e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Alex Hall <alex.mojaki@gmail.com>"
+    },
+    "s_d64c343850fa3a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1779705691379",
+        "model": "unknown"
+      },
+      "human_author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  }
+}
