@@ -225,7 +225,7 @@ def _eval_forward_ref(
     localns: Mapping[str, Any] | None,
     recursive_guard: frozenset[str],
     try_default: bool,
-) -> Any:
+) -> Any:  # pragma: no cover
     forward_arg = value.__forward_arg__
     if forward_arg in recursive_guard:
         return value
@@ -257,7 +257,7 @@ def _eval_type_backport(
     localns: Mapping[str, Any] | None,
     recursive_guard: frozenset[str] = frozenset(),
     try_default: bool = True,
-) -> Any:
+) -> Any:  # pragma: no cover
     if isinstance(value, typing.ForwardRef):
         return _eval_forward_ref(
             value, globalns, localns, recursive_guard, try_default=try_default
@@ -305,4 +305,6 @@ def eval_type_backport(
     if sys.version_info[:2] >= (3, 11):
         return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
 
-    return _eval_type_backport(value, globalns, localns, try_default=try_default)
+    return _eval_type_backport(
+        value, globalns, localns, try_default=try_default
+    )  # pragma: no cover
