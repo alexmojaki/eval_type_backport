@@ -370,9 +370,8 @@ def test_install_patch_supports_get_type_hints():
     assert eval_type_backport_module.install_patch is install_patch
 
     class Foo:
-        pass
+        value: 'int | str'
 
-    Foo.__annotations__ = {'value': 'int | str'}
     original_evaluate = t.ForwardRef._evaluate
     try:
         install_patch()
