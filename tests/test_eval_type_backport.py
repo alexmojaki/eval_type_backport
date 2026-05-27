@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections
 import contextlib
-import importlib
 import re
 import sys
 import typing as t
@@ -17,9 +16,6 @@ str((collections, contextlib, re))  # mark these as used (by eval calls)
 
 
 eval_type = t._eval_type  # type: ignore[attr-defined]
-eval_type_backport_impl = importlib.import_module(
-    'eval_type_backport.eval_type_backport'
-)
 
 
 def eval_kwargs(code: str):
@@ -385,15 +381,5 @@ def test_install_patch_supports_get_type_hints():
             assert t.ForwardRef._evaluate is ForwardRef._evaluate
         else:
             assert t.ForwardRef._evaluate is original_evaluate
-    finally:
-        t.ForwardRef._evaluate = original_evaluate
-
-
-def test_install_patch_is_noop_on_newer_python(monkeypatch):
-    original_evaluate = t.ForwardRef._evaluate
-    try:
-        monkeypatch.setattr(eval_type_backport_impl.sys, 'version_info', (3, 10))
-        install_patch()
-        assert t.ForwardRef._evaluate is original_evaluate
     finally:
         t.ForwardRef._evaluate = original_evaluate
