@@ -215,7 +215,8 @@ def _eval_direct(
 
 
 if sys.version_info[:2] >= (3, 10):
-    def eval_type_backport(
+
+    def eval_type_backport(  # type: ignore  # allow duplicate declaration
         value: Any,
         globalns: dict[str, Any] | None = None,
         localns: Mapping[str, Any] | None = None,
@@ -252,3 +253,12 @@ else:
             ):
                 raise
             return _eval_direct(value, globalns, localns)
+
+
+def install_patch() -> None:
+    """Monkey-patch `typing.ForwardRef._evaluate` to support newer syntax on older Python versions.
+
+    This indirectly makes functions like `typing.get_type_hints` and `typing._eval_type` work as well.
+    """
+    if sys.version_info[:2] < (3, 10):
+        typing.ForwardRef._evaluate = ForwardRef._evaluate  # type: ignore
