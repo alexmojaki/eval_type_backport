@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections
 import contextlib
-import importlib
 import re
 import sys
 import typing as t
@@ -11,12 +10,13 @@ import pytest
 
 import eval_type_backport as eval_type_backport_module
 from eval_type_backport import ForwardRef, eval_type_backport, install_patch
-from eval_type_backport.eval_type_backport import new_generic_types
+from eval_type_backport.eval_type_backport import (
+    _eval_forward_ref,
+    _eval_type_backport,
+    new_generic_types,
+)
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
-eval_type_backport_impl = importlib.import_module(
-    'eval_type_backport.eval_type_backport'
-)
 
 
 eval_type = t._eval_type  # type: ignore[attr-defined]
@@ -402,26 +402,20 @@ def test_private_backport_evaluator_pep585_forward_refs():
     expected = list[C] if sys.version_info[:2] >= (3, 9) else t.List[C]
 
     if sys.version_info[:2] >= (3, 9):
-        assert (
-            eval_type_backport_impl._eval_type_backport(list['C'], globals(), locals())
-            == expected
-        )
+        assert _eval_type_backport(list['C'], globals(), locals()) == expected
     assert (
-        eval_type_backport_impl._eval_type_backport(
-            t.ForwardRef('list["C"]'), globals(), locals()
-        )
-        == expected
+        _eval_type_backport(t.ForwardRef('list["C"]'), globals(), locals()) == expected
     )
     if sys.version_info[:2] < (3, 14):
         assert (
-            eval_type_backport_impl._eval_type_backport(
+            _eval_type_backport(
                 t.ForwardRef('list["C"]'), globals(), locals(), try_default=False
             )
             == expected
         )
     recursive_ref = t.ForwardRef('X')
     assert (
-        eval_type_backport_impl._eval_forward_ref(
+        _eval_forward_ref(
             recursive_ref, globals(), locals(), frozenset({'X'}), try_default=True
         )
         is recursive_ref
