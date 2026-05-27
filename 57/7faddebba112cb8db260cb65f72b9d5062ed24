@@ -1,0 +1,22 @@
+tests/test_eval_type_backport.py
+  s_5bd1d61050c5b1::t_392a1f6350c1ed 461-463,465-496,498-508
+  s_5bd1d61050c5b1::t_519a62fd8db5a7 6-7,12,28-40,44-52
+  s_5bd1d61050c5b1::t_7b7d03f280a03a 41-43
+  s_5bd1d61050c5b1::t_74d5dda87dffaf 464,497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "577faddebba112cb8db260cb65f72b9d5062ed24",
+  "prompts": {},
+  "sessions": {
+    "s_5bd1d61050c5b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e695b-f60e-7043-9c2a-ace521eb0868",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  }
+}
