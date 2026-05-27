@@ -4,6 +4,7 @@ import collections
 import contextlib
 import re
 import sys
+import textwrap
 import typing as t
 
 import pytest
@@ -362,3 +363,69 @@ def test_copy_forward_ref_attrs():
         **({} if sys.version_info < (3, 9, 8) else {'is_class': True}),
     )
     eval_type_backport(ref, globalns=globals(), localns=locals())
+
+
+def test_pep585_generic_alias_forward_refs():
+    if sys.version_info[:2] < (3, 9):
+        pytest.skip('PEP 585 generic aliases were added in Python 3.9')
+
+    class C1:
+        pass
+
+    C1.__annotations__ = {'a': list['C1']}
+    assert eval_type_backport(C1.__annotations__['a'], globals(), locals()) == list[C1]
+
+    class C2:
+        pass
+
+    C2.__annotations__ = {'a': dict['C1', list[t.List[list['C2']]]]}
+    assert (
+        eval_type_backport(C2.__annotations__['a'], globals(), locals())
+        == dict[C1, list[t.List[list[C2]]]]
+    )
+
+    C2.__annotations__ = {'a': list['C2 | int']}
+    assert (
+        eval_type_backport(C2.__annotations__['a'], globals(), locals())
+        == list[t.Union[C2, int]]
+    )
+
+
+def test_stringified_pep585_forward_refs():
+    class C2:
+        pass
+
+    scope = {'List': t.List, 'C2': C2}
+    exec(
+        textwrap.dedent(
+            """
+            from __future__ import annotations
+
+            class C3:
+                a: List[list["C2"]]
+            """
+        ),
+        scope,
+    )
+    C3 = scope['C3']
+    assert C3.__annotations__['a'] == "List[list['C2']]"
+
+    result = eval_type_backport(t.ForwardRef(C3.__annotations__['a']), globals(), scope)
+    expected = t.List[list[C2]] if sys.version_info[:2] >= (3, 9) else t.List[t.List[C2]]
+    assert result == expected
+
+
+def test_recursive_pep585_forward_ref():
+    if sys.version_info[:2] < (3, 9):
+        pytest.skip('PEP 585 generic aliases were added in Python 3.9')
+
+    X = list['X']
+
+    result = eval_type_backport(X, globals(), locals())
+
+    assert t.get_origin(result) is list
+    (inner_alias,) = t.get_args(result)
+    assert t.get_origin(inner_alias) is list
+    (inner_ref,) = t.get_args(inner_alias)
+    assert isinstance(inner_ref, t.ForwardRef)
+    assert inner_ref.__forward_arg__ == 'X'
