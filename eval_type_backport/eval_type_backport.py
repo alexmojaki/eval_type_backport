@@ -9,10 +9,7 @@ import sys
 import typing
 import uuid
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:  # pragma: no cover
-    from _typeshed import Unused
+from typing import Any
 
 
 def is_unsupported_types_for_union_error(e: TypeError) -> bool:
@@ -214,41 +211,39 @@ def _eval_direct(
     return transformer.eval_type(tree, original_ref=value)
 
 
-if sys.version_info[:2] >= (3, 10):
-    def eval_type_backport(
-        value: Any,
-        globalns: dict[str, Any] | None = None,
-        localns: Mapping[str, Any] | None = None,
-        try_default: Unused = True,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        """Alias to typing._eval_type (Python 3.10+)."""
+def eval_type_backport(
+    value: Any,
+    globalns: dict[str, Any] | None = None,
+    localns: Mapping[str, Any] | None = None,
+    try_default: bool = True,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """
+    Like `typing._eval_type`, but lets older Python versions use newer typing features.
+    Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
+    and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
+    if the original syntax is not supported in the current Python version.
+    """
+    if sys.version_info[:2] >= (3, 10):
         return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
 
-else:
+    if not try_default:
+        return _eval_direct(value, globalns, localns)
+    try:
+        return typing._eval_type(  # type: ignore
+            value, globalns, localns, *args, **kwargs
+        )
+    except TypeError as e:
+        if not (isinstance(value, typing.ForwardRef) and is_backport_fixable_error(e)):
+            raise
+        return _eval_direct(value, globalns, localns)
 
-    def eval_type_backport(
-        value: Any,
-        globalns: dict[str, Any] | None = None,
-        localns: Mapping[str, Any] | None = None,
-        try_default: bool = True,
-    ) -> Any:
-        """
-        Like `typing._eval_type`, but lets older Python versions use newer typing features.
-        Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
-        and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
-        if the original syntax is not supported in the current Python version.
-        """
-        if not try_default:
-            return _eval_direct(value, globalns, localns)
-        try:
-            return typing._eval_type(  # type: ignore
-                value, globalns, localns
-            )
-        except TypeError as e:
-            if not (
-                isinstance(value, typing.ForwardRef) and is_backport_fixable_error(e)
-            ):
-                raise
-            return _eval_direct(value, globalns, localns)
+
+def install_patch() -> None:
+    """Monkey-patch `typing.ForwardRef._evaluate` to support newer syntax on older Python versions.
+
+    This indirectly makes functions like `typing.get_type_hints` and `typing._eval_type` work as well.
+    """
+    if sys.version_info[:2] < (3, 10):
+        typing.ForwardRef._evaluate = ForwardRef._evaluate  # type: ignore
