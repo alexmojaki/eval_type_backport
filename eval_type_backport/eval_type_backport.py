@@ -4,15 +4,14 @@ import ast
 import collections.abc
 import contextlib
 import functools
+import operator
 import re
 import sys
 import typing
+import types
 import uuid
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:  # pragma: no cover
-    from _typeshed import Unused
+from typing import Any
 
 
 def is_unsupported_types_for_union_error(e: TypeError) -> bool:
@@ -172,6 +171,12 @@ class BackportTransformer(ast.NodeTransformer):
 
 
 original_evaluate = typing.ForwardRef._evaluate
+GenericAlias = getattr(types, 'GenericAlias', None)
+UnionType = getattr(types, 'UnionType', None)
+_GenericAlias = getattr(typing, '_GenericAlias', None)
+_eval_type_generic_aliases = tuple(
+    alias for alias in (GenericAlias, _GenericAlias, UnionType) if alias is not None
+)
 
 
 if sys.version_info[:2] >= (3, 10):
@@ -214,41 +219,90 @@ def _eval_direct(
     return transformer.eval_type(tree, original_ref=value)
 
 
-if sys.version_info[:2] >= (3, 10):
-    def eval_type_backport(
-        value: Any,
-        globalns: dict[str, Any] | None = None,
-        localns: Mapping[str, Any] | None = None,
-        try_default: Unused = True,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        """Alias to typing._eval_type (Python 3.10+)."""
-        return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
+def _eval_forward_ref(
+    value: typing.ForwardRef,
+    globalns: dict[str, Any] | None,
+    localns: Mapping[str, Any] | None,
+    recursive_guard: frozenset[str],
+    try_default: bool,
+) -> Any:
+    forward_arg = value.__forward_arg__
+    if forward_arg in recursive_guard:
+        return value
 
-else:
-
-    def eval_type_backport(
-        value: Any,
-        globalns: dict[str, Any] | None = None,
-        localns: Mapping[str, Any] | None = None,
-        try_default: bool = True,
-    ) -> Any:
-        """
-        Like `typing._eval_type`, but lets older Python versions use newer typing features.
-        Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
-        and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
-        if the original syntax is not supported in the current Python version.
-        """
-        if not try_default:
-            return _eval_direct(value, globalns, localns)
+    if not try_default:
+        evaluated = _eval_direct(value, globalns, localns)
+    else:
         try:
-            return typing._eval_type(  # type: ignore
+            evaluated = typing._eval_type(  # type: ignore
                 value, globalns, localns
             )
         except TypeError as e:
-            if not (
-                isinstance(value, typing.ForwardRef) and is_backport_fixable_error(e)
-            ):
+            if not is_backport_fixable_error(e):
                 raise
-            return _eval_direct(value, globalns, localns)
+            evaluated = _eval_direct(value, globalns, localns)
+
+    return _eval_type_backport(
+        evaluated,
+        globalns,
+        localns,
+        recursive_guard | {forward_arg},
+        try_default=True,
+    )
+
+
+def _eval_type_backport(
+    value: Any,
+    globalns: dict[str, Any] | None,
+    localns: Mapping[str, Any] | None,
+    recursive_guard: frozenset[str] = frozenset(),
+    try_default: bool = True,
+) -> Any:
+    if isinstance(value, typing.ForwardRef):
+        return _eval_forward_ref(
+            value, globalns, localns, recursive_guard, try_default=try_default
+        )
+
+    if GenericAlias is not None and isinstance(value, GenericAlias):
+        value = GenericAlias(
+            value.__origin__,
+            tuple(
+                typing.ForwardRef(arg) if isinstance(arg, str) else arg
+                for arg in value.__args__
+            ),
+        )
+
+    if _eval_type_generic_aliases and isinstance(value, _eval_type_generic_aliases):
+        evaluated_args = tuple(
+            _eval_type_backport(arg, globalns, localns, recursive_guard)
+            for arg in value.__args__
+        )
+        if evaluated_args == value.__args__:
+            return value
+        if GenericAlias is not None and isinstance(value, GenericAlias):
+            return GenericAlias(value.__origin__, evaluated_args)
+        if UnionType is not None and isinstance(value, UnionType):
+            return functools.reduce(operator.or_, evaluated_args)
+        return value.copy_with(evaluated_args)
+
+    return value
+
+
+def eval_type_backport(
+    value: Any,
+    globalns: dict[str, Any] | None = None,
+    localns: Mapping[str, Any] | None = None,
+    try_default: bool = True,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """
+    Like `typing._eval_type`, but lets older Python versions use newer typing features.
+    Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
+    and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
+    if the original syntax is not supported in the current Python version.
+    """
+    if sys.version_info[:2] >= (3, 11):
+        return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
+
+    return _eval_type_backport(value, globalns, localns, try_default=try_default)
