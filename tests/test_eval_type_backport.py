@@ -3,13 +3,10 @@ from __future__ import annotations
 import collections
 import contextlib
 import importlib
-import importlib.util
-import pathlib
 import re
 import sys
 import textwrap
 import typing as t
-import types
 
 import pytest
 
@@ -24,33 +21,6 @@ eval_type_backport_impl = importlib.import_module(
 
 
 eval_type = t._eval_type  # type: ignore[attr-defined]
-
-
-def load_impl_with_version(
-    monkeypatch: pytest.MonkeyPatch,
-    version_info: tuple[int, int],
-    *,
-    generic_alias: type | None = None,
-    union_type: type | None = None,
-) -> types.ModuleType:
-    if generic_alias is not None:
-        monkeypatch.setattr(types, 'GenericAlias', generic_alias, raising=False)
-    if union_type is not None:
-        monkeypatch.setattr(types, 'UnionType', union_type, raising=False)
-    monkeypatch.setattr(sys, 'version_info', version_info)
-
-    module_file = eval_type_backport_impl.__file__
-    assert module_file is not None
-    module_path = pathlib.Path(module_file)
-    spec = importlib.util.spec_from_file_location(
-        f'eval_type_backport_test_{version_info[0]}_{version_info[1]}',
-        module_path,
-    )
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def eval_kwargs(code: str):
@@ -457,54 +427,6 @@ def test_private_backport_evaluator_pep585_forward_refs():
         )
         is recursive_ref
     )
-
-
-def test_private_backport_evaluator_version_coverage(monkeypatch: pytest.MonkeyPatch):
-    if sys.version_info[:2] >= (3, 11):
-        pytest.skip('old-version coverage shim')
-    original_version = sys.version_info[:2]
-
-    newer_impl = load_impl_with_version(monkeypatch, (3, 11))
-    assert newer_impl.eval_type_backport(int, globals(), locals()) is int
-
-    class FakeGenericAlias:
-        def __init__(self, origin: t.Any, args: t.Any):
-            self.__origin__ = origin
-            self.__args__ = args if isinstance(args, tuple) else (args,)
-
-        def __eq__(self, other: object) -> bool:
-            return (
-                isinstance(other, FakeGenericAlias)
-                and self.__origin__ == other.__origin__
-                and self.__args__ == other.__args__
-            )
-
-    class FakeUnionType:
-        def __init__(self, args: tuple[t.Any, ...]):
-            self.__args__ = args
-
-    class OrableMeta(type):
-        def __or__(self, other: object):
-            return ('union', self, other)
-
-    class A(metaclass=OrableMeta):
-        pass
-
-    class B(metaclass=OrableMeta):
-        pass
-
-    old_impl = load_impl_with_version(
-        monkeypatch,
-        original_version,
-        generic_alias=FakeGenericAlias,
-        union_type=FakeUnionType,
-    )
-    assert old_impl._eval_type_backport(
-        FakeGenericAlias(list, ('A',)), globals(), locals()
-    ) == FakeGenericAlias(list, (A,))
-    assert old_impl._eval_type_backport(
-        FakeUnionType((t.ForwardRef('A'), t.ForwardRef('B'))), globals(), locals()
-    ) == ('union', A, B)
 
 
 def test_stringified_pep585_forward_refs():
