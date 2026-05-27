@@ -115,9 +115,7 @@ class BackportTransformer(ast.NodeTransformer):
                 if hasattr(original_ref, attr):
                     setattr(ref, attr, getattr(original_ref, attr))
         ref.__forward_code__ = compile(node, '<node>', 'eval')
-        return typing._eval_type(  # type: ignore
-            ref, self.globalns, self.localns
-        )
+        return original_eval_type(ref, self.globalns, self.localns)
 
     def visit_BinOp(self, node) -> ast.BinOp | ast.Subscript:
         node = self.generic_visit(node)
@@ -174,6 +172,7 @@ class BackportTransformer(ast.NodeTransformer):
 
 
 original_evaluate = typing.ForwardRef._evaluate
+original_eval_type = typing._eval_type  # type: ignore[attr-defined]
 GenericAlias = getattr(types, 'GenericAlias', None)
 UnionType = getattr(types, 'UnionType', None)
 _GenericAlias = getattr(typing, '_GenericAlias', None)
@@ -237,9 +236,7 @@ def _eval_forward_ref(
         evaluated = _eval_direct(value, globalns, localns)
     else:
         try:
-            evaluated = typing._eval_type(  # type: ignore
-                value, globalns, localns
-            )
+            evaluated = original_eval_type(value, globalns, localns)
         except TypeError as e:
             if not is_backport_fixable_error(e):
                 raise
@@ -302,7 +299,7 @@ if sys.version_info[:2] >= (3, 11):
         **kwargs: Any,
     ) -> Any:
         """Alias to typing._eval_type (Python 3.11+)."""
-        return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
+        return original_eval_type(value, globalns, localns, *args, **kwargs)
 
 else:
 
@@ -324,9 +321,10 @@ else:
 
 
 def install_patch() -> None:
-    """Monkey-patch `typing.ForwardRef._evaluate` to support newer syntax on older Python versions.
+    """Monkey-patch `typing` internals to support newer syntax on older Python versions.
 
-    This indirectly makes functions like `typing.get_type_hints` and `typing._eval_type` work as well.
+    This makes functions like `typing.get_type_hints` and `typing._eval_type` work as well.
     """
-    if sys.version_info[:2] < (3, 10):
+    if sys.version_info[:2] < (3, 11):
         typing.ForwardRef._evaluate = ForwardRef._evaluate  # type: ignore
+        typing._eval_type = eval_type_backport  # type: ignore

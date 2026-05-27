@@ -457,12 +457,26 @@ def test_install_patch_supports_get_type_hints():
         value: int | str
 
     original_evaluate = t.ForwardRef._evaluate
+    original_eval_type = t._eval_type  # type: ignore[attr-defined]
     try:
         install_patch()
         assert t.get_type_hints(Foo) == {'value': t.Union[int, str]}
-        if sys.version_info[:2] < (3, 10):
+        if sys.version_info[:2] >= (3, 9):
+
+            class Node:
+                pass
+
+            Node.__annotations__ = {'children': list['Node']}
+            assert t.get_type_hints(Node, globals(), locals()) == {
+                'children': list[Node]
+            }
+
+        if sys.version_info[:2] < (3, 11):
             assert t.ForwardRef._evaluate is ForwardRef._evaluate
+            assert t._eval_type is eval_type_backport  # type: ignore[attr-defined]
         else:
             assert t.ForwardRef._evaluate is original_evaluate
+            assert t._eval_type is original_eval_type  # type: ignore[attr-defined]
     finally:
         t.ForwardRef._evaluate = original_evaluate
+        t._eval_type = original_eval_type  # type: ignore[attr-defined]
