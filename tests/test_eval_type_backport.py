@@ -5,7 +5,6 @@ import contextlib
 import importlib
 import re
 import sys
-import textwrap
 import typing as t
 
 import pytest
@@ -433,22 +432,12 @@ def test_stringified_pep585_forward_refs():
     class C2:
         pass
 
-    scope = {'List': t.List, 'C2': C2}
-    exec(
-        textwrap.dedent(
-            """
-            from __future__ import annotations
+    class C3:
+        a: t.List[list['C2']]
 
-            class C3:
-                a: List[list["C2"]]
-            """
-        ),
-        scope,
+    result = eval_type_backport(
+        t.ForwardRef(C3.__annotations__['a']), globals(), locals()
     )
-    C3 = scope['C3']
-    assert C3.__annotations__['a'] == "List[list['C2']]"
-
-    result = eval_type_backport(t.ForwardRef(C3.__annotations__['a']), globals(), scope)
     expected = t.List[list[C2]] if sys.version_info[:2] >= (3, 9) else t.List[t.List[C2]]
     assert result == expected
 
