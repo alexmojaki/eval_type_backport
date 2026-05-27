@@ -376,21 +376,18 @@ def test_pep585_generic_alias_forward_refs():
     class C1:
         pass
 
-    C1.__annotations__ = {'a': list['C1']}
-    assert eval_type_backport(C1.__annotations__['a'], globals(), locals()) == list[C1]
+    assert eval_type_backport(list['C1'], globals(), locals()) == list[C1]
 
     class C2:
         pass
 
-    C2.__annotations__ = {'a': dict['C1', list[t.List[list['C2']]]]}
     assert (
-        eval_type_backport(C2.__annotations__['a'], globals(), locals())
+        eval_type_backport(dict['C1', list[t.List[list['C2']]]], globals(), locals())
         == dict[C1, list[t.List[list[C2]]]]
     )
 
-    C2.__annotations__ = {'a': list['C2 | int']}
     assert (
-        eval_type_backport(C2.__annotations__['a'], globals(), locals())
+        eval_type_backport(list['C2 | int'], globals(), locals())
         == list[t.Union[C2, int]]
     )
 
