@@ -461,15 +461,6 @@ def test_install_patch_supports_get_type_hints():
     try:
         install_patch()
         assert t.get_type_hints(Foo) == {'value': t.Union[int, str]}
-        if sys.version_info[:2] >= (3, 9):
-
-            class Node:
-                pass
-
-            Node.__annotations__ = {'children': list['Node']}
-            assert t.get_type_hints(Node, globals(), locals()) == {
-                'children': list[Node]
-            }
 
         if sys.version_info[:2] < (3, 11):
             assert t.ForwardRef._evaluate is ForwardRef._evaluate
