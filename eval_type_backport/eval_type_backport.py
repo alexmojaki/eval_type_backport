@@ -215,7 +215,8 @@ def _eval_direct(
 
 
 if sys.version_info[:2] >= (3, 10):
-    def eval_type_backport(
+
+    def eval_type_backport(  # type: ignore  # allow duplicate declaration
         value: Any,
         globalns: dict[str, Any] | None = None,
         localns: Mapping[str, Any] | None = None,
