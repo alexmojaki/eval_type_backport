@@ -13,7 +13,8 @@ import types
 
 import pytest
 
-from eval_type_backport import ForwardRef, eval_type_backport
+import eval_type_backport as eval_type_backport_module
+from eval_type_backport import ForwardRef, eval_type_backport, install_patch
 from eval_type_backport.eval_type_backport import new_generic_types
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
@@ -544,3 +545,22 @@ def test_recursive_pep585_forward_ref():
     (inner_ref,) = t.get_args(inner_alias)
     assert isinstance(inner_ref, t.ForwardRef)
     assert inner_ref.__forward_arg__ == 'X'
+
+
+def test_install_patch_supports_get_type_hints():
+    assert 'install_patch' in eval_type_backport_module.__all__
+    assert eval_type_backport_module.install_patch is install_patch
+
+    class Foo:
+        value: int | str
+
+    original_evaluate = t.ForwardRef._evaluate
+    try:
+        install_patch()
+        assert t.get_type_hints(Foo) == {'value': t.Union[int, str]}
+        if sys.version_info[:2] < (3, 10):
+            assert t.ForwardRef._evaluate is ForwardRef._evaluate
+        else:
+            assert t.ForwardRef._evaluate is original_evaluate
+    finally:
+        t.ForwardRef._evaluate = original_evaluate

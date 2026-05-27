@@ -321,3 +321,12 @@ else:
         if the original syntax is not supported in the current Python version.
         """
         return _eval_type_backport(value, globalns, localns, try_default=try_default)
+
+
+def install_patch() -> None:
+    """Monkey-patch `typing.ForwardRef._evaluate` to support newer syntax on older Python versions.
+
+    This indirectly makes functions like `typing.get_type_hints` and `typing._eval_type` work as well.
+    """
+    if sys.version_info[:2] < (3, 10):
+        typing.ForwardRef._evaluate = ForwardRef._evaluate  # type: ignore
