@@ -1,0 +1,14 @@
+eval_type_backport/eval_type_backport.py
+  h_d9dd17644dded9 219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "544eb5c84c2a6d61855646f736a33e3ff07aed8d",
+  "prompts": {},
+  "humans": {
+    "h_d9dd17644dded9": {
+      "author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  }
+}
