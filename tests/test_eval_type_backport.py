@@ -10,7 +10,11 @@ import pytest
 
 import eval_type_backport as eval_type_backport_module
 from eval_type_backport import ForwardRef, eval_type_backport, install_patch
-from eval_type_backport.eval_type_backport import new_generic_types
+from eval_type_backport.eval_type_backport import (
+    _eval_forward_ref,
+    _eval_type_backport,
+    new_generic_types,
+)
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
 
@@ -365,6 +369,86 @@ def test_copy_forward_ref_attrs():
     eval_type_backport(ref, globalns=globals(), localns=locals())
 
 
+def test_pep585_generic_alias_forward_refs():
+    if sys.version_info[:2] < (3, 9):
+        pytest.skip('PEP 585 generic aliases were added in Python 3.9')
+
+    class C1:
+        pass
+
+    assert eval_type_backport(list['C1'], globals(), locals()) == list[C1]
+
+    class C2:
+        pass
+
+    assert (
+        eval_type_backport(dict['C1', list[t.List[list['C2']]]], globals(), locals())
+        == dict[C1, list[t.List[list[C2]]]]
+    )
+
+    assert (
+        eval_type_backport(list['C2 | int'], globals(), locals())
+        == list[t.Union[C2, int]]
+    )
+
+
+def test_private_backport_evaluator_pep585_forward_refs():
+    class C:
+        pass
+
+    expected = list[C] if sys.version_info[:2] >= (3, 9) else t.List[C]
+
+    if sys.version_info[:2] >= (3, 9):
+        assert _eval_type_backport(list['C'], globals(), locals()) == expected
+    assert (
+        _eval_type_backport(t.ForwardRef('list["C"]'), globals(), locals()) == expected
+    )
+    if sys.version_info[:2] < (3, 14):
+        assert (
+            _eval_type_backport(
+                t.ForwardRef('list["C"]'), globals(), locals(), try_default=False
+            )
+            == expected
+        )
+    recursive_ref = t.ForwardRef('X')
+    assert (
+        _eval_forward_ref(
+            recursive_ref, globals(), locals(), frozenset({'X'}), try_default=True
+        )
+        is recursive_ref
+    )
+
+
+def test_stringified_pep585_forward_refs():
+    class C2:
+        pass
+
+    class C3:
+        a: t.List[list['C2']]
+
+    result = eval_type_backport(
+        t.ForwardRef(C3.__annotations__['a']), globals(), locals()
+    )
+    expected = t.List[list[C2]] if sys.version_info[:2] >= (3, 9) else t.List[t.List[C2]]
+    assert result == expected
+
+
+def test_recursive_pep585_forward_ref():
+    if sys.version_info[:2] < (3, 9):
+        pytest.skip('PEP 585 generic aliases were added in Python 3.9')
+
+    X = list['X']
+
+    result = eval_type_backport(X, globals(), locals())
+
+    assert t.get_origin(result) is list
+    (inner_alias,) = t.get_args(result)
+    assert t.get_origin(inner_alias) is list
+    (inner_ref,) = t.get_args(inner_alias)
+    assert isinstance(inner_ref, t.ForwardRef)
+    assert inner_ref.__forward_arg__ == 'X'
+
+
 def test_install_patch_supports_get_type_hints():
     assert 'install_patch' in eval_type_backport_module.__all__
     assert eval_type_backport_module.install_patch is install_patch
@@ -373,12 +457,17 @@ def test_install_patch_supports_get_type_hints():
         value: int | str
 
     original_evaluate = t.ForwardRef._evaluate
+    original_eval_type = t._eval_type  # type: ignore[attr-defined]
     try:
         install_patch()
         assert t.get_type_hints(Foo) == {'value': t.Union[int, str]}
-        if sys.version_info[:2] < (3, 10):
+
+        if sys.version_info[:2] < (3, 11):
             assert t.ForwardRef._evaluate is ForwardRef._evaluate
+            assert t._eval_type is eval_type_backport  # type: ignore[attr-defined]
         else:
             assert t.ForwardRef._evaluate is original_evaluate
+            assert t._eval_type is original_eval_type  # type: ignore[attr-defined]
     finally:
         t.ForwardRef._evaluate = original_evaluate
+        t._eval_type = original_eval_type  # type: ignore[attr-defined]

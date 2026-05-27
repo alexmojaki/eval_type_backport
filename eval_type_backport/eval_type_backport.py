@@ -4,9 +4,11 @@ import ast
 import collections.abc
 import contextlib
 import functools
+import operator
 import re
 import sys
 import typing
+import types
 import uuid
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
@@ -113,9 +115,7 @@ class BackportTransformer(ast.NodeTransformer):
                 if hasattr(original_ref, attr):
                     setattr(ref, attr, getattr(original_ref, attr))
         ref.__forward_code__ = compile(node, '<node>', 'eval')
-        return typing._eval_type(  # type: ignore
-            ref, self.globalns, self.localns
-        )
+        return original_eval_type(ref, self.globalns, self.localns)
 
     def visit_BinOp(self, node) -> ast.BinOp | ast.Subscript:
         node = self.generic_visit(node)
@@ -172,6 +172,13 @@ class BackportTransformer(ast.NodeTransformer):
 
 
 original_evaluate = typing.ForwardRef._evaluate
+original_eval_type = typing._eval_type  # type: ignore[attr-defined]
+GenericAlias = getattr(types, 'GenericAlias', None)
+UnionType = getattr(types, 'UnionType', None)
+_GenericAlias = getattr(typing, '_GenericAlias', None)
+_eval_type_generic_aliases = tuple(
+    alias for alias in (GenericAlias, _GenericAlias, UnionType) if alias is not None
+)
 
 
 if sys.version_info[:2] >= (3, 10):
@@ -214,7 +221,74 @@ def _eval_direct(
     return transformer.eval_type(tree, original_ref=value)
 
 
-if sys.version_info[:2] >= (3, 10):
+def _eval_forward_ref(
+    value: typing.ForwardRef,
+    globalns: dict[str, Any] | None,
+    localns: Mapping[str, Any] | None,
+    recursive_guard: frozenset[str],
+    try_default: bool,
+) -> Any:
+    forward_arg = value.__forward_arg__
+    if forward_arg in recursive_guard:
+        return value
+
+    if not try_default:
+        evaluated = _eval_direct(value, globalns, localns)
+    else:
+        try:
+            evaluated = original_eval_type(value, globalns, localns)
+        except TypeError as e:
+            if not is_backport_fixable_error(e):
+                raise
+            evaluated = _eval_direct(value, globalns, localns)
+
+    return _eval_type_backport(
+        evaluated,
+        globalns,
+        localns,
+        recursive_guard | {forward_arg},
+        try_default=True,
+    )
+
+
+def _eval_type_backport(
+    value: Any,
+    globalns: dict[str, Any] | None,
+    localns: Mapping[str, Any] | None,
+    recursive_guard: frozenset[str] = frozenset(),
+    try_default: bool = True,
+) -> Any:
+    if isinstance(value, typing.ForwardRef):
+        return _eval_forward_ref(
+            value, globalns, localns, recursive_guard, try_default=try_default
+        )
+
+    if GenericAlias is not None and isinstance(value, GenericAlias):
+        value = GenericAlias(
+            value.__origin__,
+            tuple(
+                typing.ForwardRef(arg) if isinstance(arg, str) else arg
+                for arg in value.__args__
+            ),
+        )
+
+    if _eval_type_generic_aliases and isinstance(value, _eval_type_generic_aliases):
+        evaluated_args = tuple(
+            _eval_type_backport(arg, globalns, localns, recursive_guard)
+            for arg in value.__args__
+        )
+        if evaluated_args == value.__args__:
+            return value
+        if GenericAlias is not None and isinstance(value, GenericAlias):
+            return GenericAlias(value.__origin__, evaluated_args)
+        if UnionType is not None and isinstance(value, UnionType):
+            return functools.reduce(operator.or_, evaluated_args)
+        return value.copy_with(evaluated_args)
+
+    return value
+
+
+if sys.version_info[:2] >= (3, 11):
 
     def eval_type_backport(  # type: ignore  # allow duplicate declaration
         value: Any,
@@ -224,8 +298,8 @@ if sys.version_info[:2] >= (3, 10):
         *args: Any,
         **kwargs: Any,
     ) -> Any:
-        """Alias to typing._eval_type (Python 3.10+)."""
-        return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
+        """Alias to typing._eval_type (Python 3.11+)."""
+        return original_eval_type(value, globalns, localns, *args, **kwargs)
 
 else:
 
@@ -234,6 +308,8 @@ else:
         globalns: dict[str, Any] | None = None,
         localns: Mapping[str, Any] | None = None,
         try_default: bool = True,
+        *args: Any,
+        **kwargs: Any,
     ) -> Any:
         """
         Like `typing._eval_type`, but lets older Python versions use newer typing features.
@@ -241,24 +317,14 @@ else:
         and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
         if the original syntax is not supported in the current Python version.
         """
-        if not try_default:
-            return _eval_direct(value, globalns, localns)
-        try:
-            return typing._eval_type(  # type: ignore
-                value, globalns, localns
-            )
-        except TypeError as e:
-            if not (
-                isinstance(value, typing.ForwardRef) and is_backport_fixable_error(e)
-            ):
-                raise
-            return _eval_direct(value, globalns, localns)
+        return _eval_type_backport(value, globalns, localns, try_default=try_default)
 
 
 def install_patch() -> None:
-    """Monkey-patch `typing.ForwardRef._evaluate` to support newer syntax on older Python versions.
+    """Monkey-patch `typing` internals to support newer syntax on older Python versions.
 
-    This indirectly makes functions like `typing.get_type_hints` and `typing._eval_type` work as well.
+    This makes functions like `typing.get_type_hints` and `typing._eval_type` work as well.
     """
-    if sys.version_info[:2] < (3, 10):
+    if sys.version_info[:2] < (3, 11):
         typing.ForwardRef._evaluate = ForwardRef._evaluate  # type: ignore
+        typing._eval_type = eval_type_backport  # type: ignore
