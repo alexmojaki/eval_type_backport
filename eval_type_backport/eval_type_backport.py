@@ -11,7 +11,10 @@ import typing
 import types
 import uuid
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _typeshed import Unused
 
 
 def is_unsupported_types_for_union_error(e: TypeError) -> bool:
@@ -225,7 +228,7 @@ def _eval_forward_ref(
     localns: Mapping[str, Any] | None,
     recursive_guard: frozenset[str],
     try_default: bool,
-) -> Any:  # pragma: no cover
+) -> Any:
     forward_arg = value.__forward_arg__
     if forward_arg in recursive_guard:
         return value
@@ -257,7 +260,7 @@ def _eval_type_backport(
     localns: Mapping[str, Any] | None,
     recursive_guard: frozenset[str] = frozenset(),
     try_default: bool = True,
-) -> Any:  # pragma: no cover
+) -> Any:
     if isinstance(value, typing.ForwardRef):
         return _eval_forward_ref(
             value, globalns, localns, recursive_guard, try_default=try_default
@@ -288,23 +291,33 @@ def _eval_type_backport(
     return value
 
 
-def eval_type_backport(
-    value: Any,
-    globalns: dict[str, Any] | None = None,
-    localns: Mapping[str, Any] | None = None,
-    try_default: bool = True,
-    *args: Any,
-    **kwargs: Any,
-) -> Any:
-    """
-    Like `typing._eval_type`, but lets older Python versions use newer typing features.
-    Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
-    and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
-    if the original syntax is not supported in the current Python version.
-    """
-    if sys.version_info[:2] >= (3, 11):
+if sys.version_info[:2] >= (3, 11):
+
+    def eval_type_backport(  # type: ignore  # allow duplicate declaration
+        value: Any,
+        globalns: dict[str, Any] | None = None,
+        localns: Mapping[str, Any] | None = None,
+        try_default: Unused = True,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Alias to typing._eval_type (Python 3.11+)."""
         return typing._eval_type(value, globalns, localns, *args, **kwargs)  # type: ignore
 
-    return _eval_type_backport(
-        value, globalns, localns, try_default=try_default
-    )  # pragma: no cover
+else:
+
+    def eval_type_backport(
+        value: Any,
+        globalns: dict[str, Any] | None = None,
+        localns: Mapping[str, Any] | None = None,
+        try_default: bool = True,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Like `typing._eval_type`, but lets older Python versions use newer typing features.
+        Specifically, this transforms `X | Y` into `typing.Union[X, Y]`
+        and `list[X]` into `typing.List[X]` etc. (for all the types made generic in PEP 585)
+        if the original syntax is not supported in the current Python version.
+        """
+        return _eval_type_backport(value, globalns, localns, try_default=try_default)
