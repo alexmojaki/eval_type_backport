@@ -355,6 +355,10 @@ def test_subscript():
         t.Match[str],
     )
 
+    assert eval_type_backport(ForwardRef('tuple[(int, str)[:]]')) == eval_type_backport(
+        ForwardRef('tuple[int, str]')
+    )
+
 
 def test_copy_forward_ref_attrs():
     ref = t.ForwardRef(
