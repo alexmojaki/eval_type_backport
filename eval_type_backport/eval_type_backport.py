@@ -29,19 +29,19 @@ def is_backport_fixable_error(e: TypeError) -> bool:
 
 # From https://peps.python.org/pep-0585/#implementation
 new_generic_types = {
-    tuple: 'Tuple',
-    list: 'List',
-    dict: 'Dict',
-    set: 'Set',
-    frozenset: 'FrozenSet',
-    type: 'Type',
-    collections.deque: 'Deque',
-    collections.defaultdict: 'DefaultDict',
-    collections.abc.Set: 'AbstractSet',
-    contextlib.AbstractContextManager: 'ContextManager',
-    contextlib.AbstractAsyncContextManager: 'AsyncContextManager',
+    tuple: typing.Tuple,
+    list: typing.List,
+    dict: typing.Dict,
+    set: typing.Set,
+    frozenset: typing.FrozenSet,
+    type: typing.Type,
+    collections.deque: typing.Deque,
+    collections.defaultdict: typing.DefaultDict,
+    collections.abc.Set: typing.AbstractSet,
+    contextlib.AbstractContextManager: typing.ContextManager,
+    contextlib.AbstractAsyncContextManager: typing.AsyncContextManager,
     **{
-        k: k.__name__
+        k: getattr(typing, k.__name__)
         for k in (
             collections.OrderedDict,
             collections.Counter,
@@ -74,6 +74,28 @@ new_generic_types = {
 }
 
 
+def safe_or(a: Any, b: Any) -> Any:
+    try:
+        return a | b
+    except TypeError as e:
+        if not is_unsupported_types_for_union_error(e):
+            raise
+        union = typing.Union
+        return union[a, b]
+
+
+def safe_subscript(value: Any, index: Any) -> Any:
+    try:
+        return value[index]
+    except TypeError as e:
+        if not is_not_subscriptable_error(e):
+            raise
+        if value not in new_generic_types:
+            raise
+        new_value = new_generic_types[value]
+        return new_value[index]
+
+
 class BackportTransformer(ast.NodeTransformer):
     """
     Transforms `X | Y` into `typing.Union[X, Y]`
@@ -94,81 +116,57 @@ class BackportTransformer(ast.NodeTransformer):
         elif localns is None:
             localns = globalns
 
-        self.typing_name = f'typing_{uuid.uuid4().hex}'
+        self.safe_or_name = f'safe_or_{uuid.uuid4().hex}'
+        self.safe_subscript_name = f'safe_subscript_{uuid.uuid4().hex}'
         self.globalns = globalns
-        self.localns = {**localns, self.typing_name: typing}
+        self.localns = {
+            **localns,
+            self.safe_or_name: safe_or,
+            self.safe_subscript_name: safe_subscript,
+        }
 
     def eval_type(
         self,
-        node: ast.Expression | ast.expr,
-        *,
-        original_ref: typing.ForwardRef | None = None,
+        node: ast.Expression,
+        original_ref: typing.ForwardRef,
     ) -> Any:
-        if not isinstance(node, ast.Expression):
-            node = ast.copy_location(ast.Expression(node), node)
         ref = typing.ForwardRef(ast.dump(node))
-        if original_ref:
-            for attr in 'is_argument is_class module'.split():
-                attr = f'__forward_{attr}__'
-                if hasattr(original_ref, attr):
-                    setattr(ref, attr, getattr(original_ref, attr))
+        for attr in 'is_argument is_class module'.split():
+            attr = f'__forward_{attr}__'
+            if hasattr(original_ref, attr):
+                setattr(ref, attr, getattr(original_ref, attr))
         ref.__forward_code__ = compile(node, '<node>', 'eval')
         return typing._eval_type(  # type: ignore
             ref, self.globalns, self.localns
         )
 
-    def visit_BinOp(self, node) -> ast.BinOp | ast.Subscript:
+    def _call(self, func_name: str, args: list[ast.expr]) -> ast.Call:
+        return ast.fix_missing_locations(
+            ast.Call(
+                func=ast.Name(id=func_name, ctx=ast.Load()),
+                args=args,
+                keywords=[],
+            )
+        )
+
+    def visit_BinOp(self, node) -> ast.BinOp | ast.Call:
         node = self.generic_visit(node)
         assert isinstance(node, ast.BinOp)
-        if isinstance(node.op, ast.BitOr):
-            left_val = self.eval_type(node.left)
-            right_val = self.eval_type(node.right)
-            try:
-                _ = left_val | right_val
-            except TypeError as e:
-                if not is_unsupported_types_for_union_error(e):
-                    raise
-                # Replace `left | right` with `typing.Union[left, right]`
-                replacement = ast.Subscript(
-                    value=ast.Attribute(
-                        value=ast.Name(id=self.typing_name, ctx=ast.Load()),
-                        attr='Union',
-                        ctx=ast.Load(),
-                    ),
-                    slice=ast.Index(
-                        value=ast.Tuple(elts=[node.left, node.right], ctx=ast.Load())
-                    ),
-                    ctx=ast.Load(),
-                )
-                return ast.fix_missing_locations(replacement)
+        if not isinstance(node.op, ast.BitOr):
+            return node
 
-        return node
+        return self._call(self.safe_or_name, [node.left, node.right])
 
     if sys.version_info[:2] < (3, 9):
 
-        def visit_Subscript(self, node) -> ast.Subscript:
+        def visit_Subscript(self, node) -> ast.Subscript | ast.Call:
             node = self.generic_visit(node)
             assert isinstance(node, ast.Subscript)
-            try:
-                value_val = self.eval_type(node.value)
-            except TypeError:
-                # Likely typing._type_check complaining that the result isn't a type,
-                # e.g. that it's a plain `Literal`.
-                # Either way, this probably isn't one of the new generic types
-                # that needs replacing.
+            if not isinstance(node.slice, ast.Index):
                 return node
-            if value_val not in new_generic_types:
-                return node
-            replacement = ast.Subscript(
-                value=ast.Attribute(
-                    value=ast.Name(id=self.typing_name, ctx=ast.Load()),
-                    attr=new_generic_types[value_val],
-                    ctx=ast.Load(),
-                ),
-                slice=node.slice,
-                ctx=ast.Load(),
-            )
-            return ast.fix_missing_locations(replacement)
+
+            slice_value = node.slice.value  # type: ignore
+            return self._call(self.safe_subscript_name, [node.value, slice_value])
 
 
 original_evaluate = typing.ForwardRef._evaluate

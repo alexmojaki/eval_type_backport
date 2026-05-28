@@ -10,7 +10,7 @@ import pytest
 
 import eval_type_backport as eval_type_backport_module
 from eval_type_backport import ForwardRef, eval_type_backport, install_patch
-from eval_type_backport.eval_type_backport import new_generic_types
+from eval_type_backport.eval_type_backport import new_generic_types, safe_subscript
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
 
@@ -137,6 +137,11 @@ class Foo(metaclass=FooMeta):
     pass
 
 
+class OtherSubscriptError:
+    def __class_getitem__(cls, item):
+        raise TypeError('other')
+
+
 def test_other_or_type_error():
     for code in [
         'Foo | (int | str)',
@@ -183,7 +188,7 @@ def check_subscript(code: str, expected_old: t.Any):
                 assert args == t.get_args(expected_new)
                 assert origin == t.get_origin(expected_new)
                 assert origin[args] == expected_new != expected_old
-                assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
+                assert t.get_origin(new_generic_types[origin]) == origin
             else:
                 assert eval_type_backport(ref, **kwargs) == expected_old
 
@@ -354,6 +359,42 @@ def test_subscript():
         're.Match[str]',
         t.Match[str],
     )
+
+    assert eval_type_backport(ForwardRef('tuple[(int, str)[:]]')) == eval_type_backport(
+        ForwardRef('tuple[int, str]')
+    )
+
+
+def test_unsupported_subscript_type_error():
+    with pytest.raises(TypeError, match='subscriptable'):
+        eval_type_backport(
+            ForwardRef('Foo[int]'),
+            globalns=globals(),
+            localns=locals(),
+        )
+
+
+def test_subscript_other_error():
+    with pytest.raises(TypeError, match='other'):
+        eval_type_backport(
+            ForwardRef('OtherSubscriptError[int]'),
+            globalns=globals(),
+            localns=locals(),
+            try_default=False,
+        )
+
+
+def test_safe_subscript():
+    if sys.version_info[:2] < (3, 9):
+        assert safe_subscript(list, int) == t.List[int]
+    else:
+        assert safe_subscript(list, int) == list[int]
+
+    with pytest.raises(TypeError, match='subscriptable'):
+        safe_subscript(Foo(), int)
+
+    with pytest.raises(TypeError, match='other'):
+        safe_subscript(OtherSubscriptError, int)
 
 
 def test_copy_forward_ref_attrs():
