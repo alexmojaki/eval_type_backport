@@ -1,0 +1,27 @@
+eval_type_backport/eval_type_backport.py
+  s_d64c343850fa3a::t_9a6cd735cc4313 150
+  h_d9dd17644dded9 143,158,167-169
+pyproject.toml
+  h_d9dd17644dded9 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3d8309f12c42cb4990c91bf9ee495ef8202288f",
+  "prompts": {},
+  "humans": {
+    "h_d9dd17644dded9": {
+      "author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d64c343850fa3a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1779705691379",
+        "model": "unknown"
+      },
+      "human_author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  }
+}
