@@ -10,7 +10,7 @@ import pytest
 
 import eval_type_backport as eval_type_backport_module
 from eval_type_backport import ForwardRef, eval_type_backport, install_patch
-from eval_type_backport.eval_type_backport import new_generic_types
+from eval_type_backport.eval_type_backport import BackportTransformer, new_generic_types
 
 str((collections, contextlib, re))  # mark these as used (by eval calls)
 
@@ -381,6 +381,28 @@ def test_subscript_other_error():
             localns=locals(),
             try_default=False,
         )
+
+
+def test_safe_subscript():
+    transformer = BackportTransformer(globalns=globals(), localns=locals())
+
+    value = object()
+    generic_types = t.cast(t.MutableMapping[t.Any, t.Any], new_generic_types)
+    generic_types[value] = t.List
+    try:
+        assert transformer.safe_subscript(value, int) == t.List[int]
+    finally:
+        del generic_types[value]
+
+    with pytest.raises(TypeError, match='subscriptable'):
+        transformer.safe_subscript(object(), int)
+
+    class OtherSubscriptError:
+        def __getitem__(self, item):
+            raise TypeError('other')
+
+    with pytest.raises(TypeError, match='other'):
+        transformer.safe_subscript(OtherSubscriptError(), int)
 
 
 def test_copy_forward_ref_attrs():
