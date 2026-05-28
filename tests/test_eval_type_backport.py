@@ -385,16 +385,13 @@ def test_subscript_other_error():
 
 
 def test_safe_subscript():
-    value = object()
-    generic_types = t.cast(t.MutableMapping[t.Any, t.Any], new_generic_types)
-    generic_types[value] = t.List
-    try:
-        assert safe_subscript(value, int) == t.List[int]
-    finally:
-        del generic_types[value]
+    if sys.version_info[:2] < (3, 9):
+        assert safe_subscript(list, int) == t.List[int]
+    else:
+        assert safe_subscript(list, int) == list[int]
 
     with pytest.raises(TypeError, match='subscriptable'):
-        safe_subscript(object(), int)
+        safe_subscript(Foo(), int)
 
     with pytest.raises(TypeError, match='other'):
         safe_subscript(OtherSubscriptError, int)
