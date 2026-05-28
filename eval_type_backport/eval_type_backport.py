@@ -74,6 +74,28 @@ new_generic_types = {
 }
 
 
+def safe_or(a: Any, b: Any) -> Any:
+    try:
+        return a | b
+    except TypeError as e:
+        if not is_unsupported_types_for_union_error(e):
+            raise
+        union = typing.Union
+        return union[a, b]
+
+
+def safe_subscript(value: Any, index: Any) -> Any:
+    try:
+        return value[index]
+    except TypeError as e:
+        if not is_not_subscriptable_error(e):
+            raise
+        if value not in new_generic_types:
+            raise
+        new_value = new_generic_types[value]
+        return new_value[index]
+
+
 class BackportTransformer(ast.NodeTransformer):
     """
     Transforms `X | Y` into `typing.Union[X, Y]`
@@ -99,29 +121,9 @@ class BackportTransformer(ast.NodeTransformer):
         self.globalns = globalns
         self.localns = {
             **localns,
-            self.safe_or_name: self.safe_or,
-            self.safe_subscript_name: self.safe_subscript,
+            self.safe_or_name: safe_or,
+            self.safe_subscript_name: safe_subscript,
         }
-
-    def safe_or(self, a: Any, b: Any) -> Any:
-        try:
-            return a | b
-        except TypeError as e:
-            if not is_unsupported_types_for_union_error(e):
-                raise
-            union = typing.Union
-            return union[a, b]
-
-    def safe_subscript(self, value: Any, index: Any) -> Any:
-        try:
-            return value[index]
-        except TypeError as e:
-            if not is_not_subscriptable_error(e):
-                raise
-            if value not in new_generic_types:
-                raise
-            new_value = new_generic_types[value]
-            return new_value[index]
 
     def eval_type(
         self,
