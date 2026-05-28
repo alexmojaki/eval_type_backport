@@ -1,0 +1,26 @@
+pyproject.toml
+  s_931fc49f744354::t_44b16be715a4a3 10
+.pre-commit-config.yaml
+  s_931fc49f744354::t_44b16be715a4a3 3,11,14-18,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2907490c9c267e3d5c85bdb13935cc95517a821c",
+  "prompts": {},
+  "humans": {
+    "h_d9dd17644dded9": {
+      "author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_931fc49f744354": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e6f66-c01f-7603-bd84-af1896790816",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  }
+}
