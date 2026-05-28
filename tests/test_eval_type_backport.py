@@ -183,7 +183,7 @@ def check_subscript(code: str, expected_old: t.Any):
                 assert args == t.get_args(expected_new)
                 assert origin == t.get_origin(expected_new)
                 assert origin[args] == expected_new != expected_old
-                assert t.get_origin(getattr(t, new_generic_types[origin])) == origin
+                assert t.get_origin(new_generic_types[origin]) == origin
             else:
                 assert eval_type_backport(ref, **kwargs) == expected_old
 

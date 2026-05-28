@@ -29,19 +29,19 @@ def is_backport_fixable_error(e: TypeError) -> bool:
 
 # From https://peps.python.org/pep-0585/#implementation
 new_generic_types = {
-    tuple: 'Tuple',
-    list: 'List',
-    dict: 'Dict',
-    set: 'Set',
-    frozenset: 'FrozenSet',
-    type: 'Type',
-    collections.deque: 'Deque',
-    collections.defaultdict: 'DefaultDict',
-    collections.abc.Set: 'AbstractSet',
-    contextlib.AbstractContextManager: 'ContextManager',
-    contextlib.AbstractAsyncContextManager: 'AsyncContextManager',
+    tuple: typing.Tuple,
+    list: typing.List,
+    dict: typing.Dict,
+    set: typing.Set,
+    frozenset: typing.FrozenSet,
+    type: typing.Type,
+    collections.deque: typing.Deque,
+    collections.defaultdict: typing.DefaultDict,
+    collections.abc.Set: typing.AbstractSet,
+    contextlib.AbstractContextManager: typing.ContextManager,
+    contextlib.AbstractAsyncContextManager: typing.AsyncContextManager,
     **{
-        k: k.__name__
+        k: getattr(typing, k.__name__)
         for k in (
             collections.OrderedDict,
             collections.Counter,
@@ -118,7 +118,7 @@ class BackportTransformer(ast.NodeTransformer):
         except TypeError as e:
             if not is_not_subscriptable_error(e) or value not in new_generic_types:
                 raise
-            new_value = getattr(typing, new_generic_types[value])
+            new_value = new_generic_types[value]
             return new_value[index]
 
     def eval_type(
