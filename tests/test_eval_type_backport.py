@@ -369,6 +369,20 @@ def test_unsupported_subscript_type_error():
         )
 
 
+def test_subscript_other_error():
+    class OtherSubscriptError:
+        def __class_getitem__(cls, item):
+            raise TypeError('other')
+
+    with pytest.raises(TypeError, match='other'):
+        eval_type_backport(
+            ForwardRef('OtherSubscriptError[int]'),
+            globalns=globals(),
+            localns=locals(),
+            try_default=False,
+        )
+
+
 def test_copy_forward_ref_attrs():
     ref = t.ForwardRef(
         't.ClassVar[int | str]',
