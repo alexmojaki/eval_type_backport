@@ -366,7 +366,6 @@ def test_unsupported_subscript_type_error():
             ForwardRef('Foo[int]'),
             globalns=globals(),
             localns=locals(),
-            try_default=False,
         )
 
 

@@ -116,7 +116,9 @@ class BackportTransformer(ast.NodeTransformer):
         try:
             return value[index]
         except TypeError as e:
-            if not is_not_subscriptable_error(e) or value not in new_generic_types:
+            if not is_not_subscriptable_error(e):
+                raise
+            if value not in new_generic_types:
                 raise
             new_value = new_generic_types[value]
             return new_value[index]
