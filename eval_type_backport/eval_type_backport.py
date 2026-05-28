@@ -94,9 +94,32 @@ class BackportTransformer(ast.NodeTransformer):
         elif localns is None:
             localns = globalns
 
-        self.typing_name = f'typing_{uuid.uuid4().hex}'
+        self.safe_or_name = f'safe_or_{uuid.uuid4().hex}'
+        self.safe_subscript_name = f'safe_subscript_{uuid.uuid4().hex}'
         self.globalns = globalns
-        self.localns = {**localns, self.typing_name: typing}
+        self.localns = {
+            **localns,
+            self.safe_or_name: self.safe_or,
+            self.safe_subscript_name: self.safe_subscript,
+        }
+
+    def safe_or(self, a: Any, b: Any) -> Any:
+        try:
+            return a | b
+        except TypeError as e:
+            if not is_unsupported_types_for_union_error(e):
+                raise
+            union = typing.Union
+            return union[a, b]
+
+    def safe_subscript(self, value: Any, index: Any) -> Any:
+        try:
+            return value[index]
+        except TypeError as e:
+            if not is_not_subscriptable_error(e) or value not in new_generic_types:
+                raise
+            new_value = getattr(typing, new_generic_types[value])
+            return new_value[index]
 
     def eval_type(
         self,
@@ -117,56 +140,28 @@ class BackportTransformer(ast.NodeTransformer):
             ref, self.globalns, self.localns
         )
 
-    def visit_BinOp(self, node) -> ast.BinOp | ast.Subscript:
+    def visit_BinOp(self, node) -> ast.BinOp | ast.Call:
         node = self.generic_visit(node)
         assert isinstance(node, ast.BinOp)
-        if isinstance(node.op, ast.BitOr):
-            left_val = self.eval_type(node.left)
-            right_val = self.eval_type(node.right)
-            try:
-                _ = left_val | right_val
-            except TypeError as e:
-                if not is_unsupported_types_for_union_error(e):
-                    raise
-                # Replace `left | right` with `typing.Union[left, right]`
-                replacement = ast.Subscript(
-                    value=ast.Attribute(
-                        value=ast.Name(id=self.typing_name, ctx=ast.Load()),
-                        attr='Union',
-                        ctx=ast.Load(),
-                    ),
-                    slice=ast.Index(
-                        value=ast.Tuple(elts=[node.left, node.right], ctx=ast.Load())
-                    ),
-                    ctx=ast.Load(),
-                )
-                return ast.fix_missing_locations(replacement)
+        if not isinstance(node.op, ast.BitOr):
+            return node
 
-        return node
+        replacement = ast.Call(
+            func=ast.Name(id=self.safe_or_name, ctx=ast.Load()),
+            args=[node.left, node.right],
+            keywords=[],
+        )
+        return ast.fix_missing_locations(replacement)
 
     if sys.version_info[:2] < (3, 9):
 
-        def visit_Subscript(self, node) -> ast.Subscript:
+        def visit_Subscript(self, node) -> ast.Call:
             node = self.generic_visit(node)
             assert isinstance(node, ast.Subscript)
-            try:
-                value_val = self.eval_type(node.value)
-            except TypeError:
-                # Likely typing._type_check complaining that the result isn't a type,
-                # e.g. that it's a plain `Literal`.
-                # Either way, this probably isn't one of the new generic types
-                # that needs replacing.
-                return node
-            if value_val not in new_generic_types:
-                return node
-            replacement = ast.Subscript(
-                value=ast.Attribute(
-                    value=ast.Name(id=self.typing_name, ctx=ast.Load()),
-                    attr=new_generic_types[value_val],
-                    ctx=ast.Load(),
-                ),
-                slice=node.slice,
-                ctx=ast.Load(),
+            replacement = ast.Call(
+                func=ast.Name(id=self.safe_subscript_name, ctx=ast.Load()),
+                args=[node.value, node.slice],
+                keywords=[],
             )
             return ast.fix_missing_locations(replacement)
 
