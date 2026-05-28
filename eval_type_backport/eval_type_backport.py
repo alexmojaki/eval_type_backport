@@ -140,18 +140,22 @@ class BackportTransformer(ast.NodeTransformer):
             ref, self.globalns, self.localns
         )
 
+    def _call(self, func_name: str, args: list[ast.expr]) -> ast.Call:
+        return ast.fix_missing_locations(
+            ast.Call(
+                func=ast.Name(id=func_name, ctx=ast.Load()),
+                args=args,
+                keywords=[],
+            )
+        )
+
     def visit_BinOp(self, node) -> ast.BinOp | ast.Call:
         node = self.generic_visit(node)
         assert isinstance(node, ast.BinOp)
         if not isinstance(node.op, ast.BitOr):
             return node
 
-        replacement = ast.Call(
-            func=ast.Name(id=self.safe_or_name, ctx=ast.Load()),
-            args=[node.left, node.right],
-            keywords=[],
-        )
-        return ast.fix_missing_locations(replacement)
+        return self._call(self.safe_or_name, [node.left, node.right])
 
     if sys.version_info[:2] < (3, 9):
 
@@ -160,12 +164,9 @@ class BackportTransformer(ast.NodeTransformer):
             assert isinstance(node, ast.Subscript)
             if not isinstance(node.slice, ast.Index):
                 return node
-            replacement = ast.Call(
-                func=ast.Name(id=self.safe_subscript_name, ctx=ast.Load()),
-                args=[node.value, node.slice.value],  # type: ignore
-                keywords=[],
-            )
-            return ast.fix_missing_locations(replacement)
+
+            slice_value = node.slice.value  # type: ignore
+            return self._call(self.safe_subscript_name, [node.value, slice_value])
 
 
 original_evaluate = typing.ForwardRef._evaluate
