@@ -16,8 +16,13 @@ repos:
     language: system
     pass_filenames: false
     types_or: [python, pyi]
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.15
-  hooks:
-    - id: ruff
-    - id: ruff-format
+  - id: ruff
+    name: ruff
+    entry: uvx ruff@latest check --force-exclude
+    language: system
+    types_or: [python, pyi]
+  - id: ruff-format
+    name: ruff format
+    entry: uvx ruff@latest format --force-exclude
+    language: system
+    types_or: [python, pyi]
