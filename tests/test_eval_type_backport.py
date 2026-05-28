@@ -360,6 +360,16 @@ def test_subscript():
     )
 
 
+def test_unsupported_subscript_type_error():
+    with pytest.raises(TypeError, match='subscriptable'):
+        eval_type_backport(
+            ForwardRef('Foo[int]'),
+            globalns=globals(),
+            localns=locals(),
+            try_default=False,
+        )
+
+
 def test_copy_forward_ref_attrs():
     ref = t.ForwardRef(
         't.ClassVar[int | str]',
