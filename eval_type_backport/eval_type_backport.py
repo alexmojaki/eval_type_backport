@@ -151,12 +151,14 @@ class BackportTransformer(ast.NodeTransformer):
 
     if sys.version_info[:2] < (3, 9):
 
-        def visit_Subscript(self, node) -> ast.Call:
+        def visit_Subscript(self, node) -> ast.Subscript | ast.Call:
             node = self.generic_visit(node)
             assert isinstance(node, ast.Subscript)
+            if not isinstance(node.slice, ast.Index):
+                return node
             replacement = ast.Call(
                 func=ast.Name(id=self.safe_subscript_name, ctx=ast.Load()),
-                args=[node.value, node.slice],
+                args=[node.value, node.slice.value],  # type: ignore
                 keywords=[],
             )
             return ast.fix_missing_locations(replacement)
