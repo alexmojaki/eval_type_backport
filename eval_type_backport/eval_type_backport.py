@@ -28,6 +28,10 @@ def is_backport_fixable_error(e: TypeError) -> bool:
 
 
 # From https://peps.python.org/pep-0585/#implementation
+def _typing_alias(value: Any) -> Any:
+    return getattr(typing, value.__name__)
+
+
 new_generic_types = {
     tuple: typing.Tuple,
     list: typing.List,
@@ -41,7 +45,7 @@ new_generic_types = {
     contextlib.AbstractContextManager: typing.ContextManager,
     contextlib.AbstractAsyncContextManager: typing.AsyncContextManager,
     **{
-        k: getattr(typing, k.__name__)
+        k: _typing_alias(k)
         for k in (
             collections.OrderedDict,
             collections.Counter,
@@ -186,7 +190,7 @@ else:
         """
 
         @functools.wraps(original_evaluate)
-        def _evaluate(
+        def _evaluate(  # pyright: ignore[reportIncompatibleMethodOverride]
             self,
             globalns: dict[str, Any] | None,
             localns: dict[str, Any] | None,
