@@ -137,6 +137,14 @@ class Foo(metaclass=FooMeta):
     pass
 
 
+class OtherSubscriptError:
+    def __class_getitem__(cls, item):
+        raise TypeError('other')
+
+    def __getitem__(self, item):
+        raise TypeError('other')
+
+
 def test_other_or_type_error():
     for code in [
         'Foo | (int | str)',
@@ -370,10 +378,6 @@ def test_unsupported_subscript_type_error():
 
 
 def test_subscript_other_error():
-    class OtherSubscriptError:
-        def __class_getitem__(cls, item):
-            raise TypeError('other')
-
     with pytest.raises(TypeError, match='other'):
         eval_type_backport(
             ForwardRef('OtherSubscriptError[int]'),
@@ -394,10 +398,6 @@ def test_safe_subscript():
 
     with pytest.raises(TypeError, match='subscriptable'):
         safe_subscript(object(), int)
-
-    class OtherSubscriptError:
-        def __getitem__(self, item):
-            raise TypeError('other')
 
     with pytest.raises(TypeError, match='other'):
         safe_subscript(OtherSubscriptError(), int)
