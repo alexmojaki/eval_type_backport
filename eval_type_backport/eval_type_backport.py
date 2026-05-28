@@ -123,18 +123,14 @@ class BackportTransformer(ast.NodeTransformer):
 
     def eval_type(
         self,
-        node: ast.Expression | ast.expr,
-        *,
-        original_ref: typing.ForwardRef | None = None,
+        node: ast.Expression,
+        original_ref: typing.ForwardRef,
     ) -> Any:
-        if not isinstance(node, ast.Expression):
-            node = ast.copy_location(ast.Expression(node), node)
         ref = typing.ForwardRef(ast.dump(node))
-        if original_ref:
-            for attr in 'is_argument is_class module'.split():
-                attr = f'__forward_{attr}__'
-                if hasattr(original_ref, attr):
-                    setattr(ref, attr, getattr(original_ref, attr))
+        for attr in 'is_argument is_class module'.split():
+            attr = f'__forward_{attr}__'
+            if hasattr(original_ref, attr):
+                setattr(ref, attr, getattr(original_ref, attr))
         ref.__forward_code__ = compile(node, '<node>', 'eval')
         return typing._eval_type(  # type: ignore
             ref, self.globalns, self.localns
