@@ -141,9 +141,6 @@ class OtherSubscriptError:
     def __class_getitem__(cls, item):
         raise TypeError('other')
 
-    def __getitem__(self, item):
-        raise TypeError('other')
-
 
 def test_other_or_type_error():
     for code in [
@@ -400,7 +397,7 @@ def test_safe_subscript():
         safe_subscript(object(), int)
 
     with pytest.raises(TypeError, match='other'):
-        safe_subscript(OtherSubscriptError(), int)
+        safe_subscript(OtherSubscriptError, int)
 
 
 def test_copy_forward_ref_attrs():
