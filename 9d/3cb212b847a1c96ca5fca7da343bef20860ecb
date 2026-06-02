@@ -1,0 +1,19 @@
+eval_type_backport/eval_type_backport.py
+  s_931fc49f744354::t_90690d71cb159c 31-60,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9d3cb212b847a1c96ca5fca7da343bef20860ecb",
+  "prompts": {},
+  "sessions": {
+    "s_931fc49f744354": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e6f66-c01f-7603-bd84-af1896790816",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Alex Hall <alex.mojaki@gmail.com>"
+    }
+  }
+}
