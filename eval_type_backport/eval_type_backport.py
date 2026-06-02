@@ -28,6 +28,36 @@ def is_backport_fixable_error(e: TypeError) -> bool:
 
 
 # From https://peps.python.org/pep-0585/#implementation
+_generic_type_origins: tuple[Any, ...] = (
+    collections.OrderedDict,
+    collections.Counter,
+    collections.ChainMap,
+    collections.abc.Awaitable,
+    collections.abc.Coroutine,
+    collections.abc.AsyncIterable,
+    collections.abc.AsyncIterator,
+    collections.abc.AsyncGenerator,
+    collections.abc.Iterable,
+    collections.abc.Iterator,
+    collections.abc.Generator,
+    collections.abc.Reversible,
+    collections.abc.Container,
+    collections.abc.Collection,
+    collections.abc.Callable,
+    collections.abc.MutableSet,
+    collections.abc.Mapping,
+    collections.abc.MutableMapping,
+    collections.abc.Sequence,
+    collections.abc.MutableSequence,
+    collections.abc.MappingView,
+    collections.abc.KeysView,
+    collections.abc.ItemsView,
+    collections.abc.ValuesView,
+    re.Pattern,
+    re.Match,
+)
+
+
 new_generic_types = {
     tuple: typing.Tuple,
     list: typing.List,
@@ -40,37 +70,7 @@ new_generic_types = {
     collections.abc.Set: typing.AbstractSet,
     contextlib.AbstractContextManager: typing.ContextManager,
     contextlib.AbstractAsyncContextManager: typing.AsyncContextManager,
-    **{
-        k: getattr(typing, name)
-        for k, name in (
-            (collections.OrderedDict, 'OrderedDict'),
-            (collections.Counter, 'Counter'),
-            (collections.ChainMap, 'ChainMap'),
-            (collections.abc.Awaitable, 'Awaitable'),
-            (collections.abc.Coroutine, 'Coroutine'),
-            (collections.abc.AsyncIterable, 'AsyncIterable'),
-            (collections.abc.AsyncIterator, 'AsyncIterator'),
-            (collections.abc.AsyncGenerator, 'AsyncGenerator'),
-            (collections.abc.Iterable, 'Iterable'),
-            (collections.abc.Iterator, 'Iterator'),
-            (collections.abc.Generator, 'Generator'),
-            (collections.abc.Reversible, 'Reversible'),
-            (collections.abc.Container, 'Container'),
-            (collections.abc.Collection, 'Collection'),
-            (collections.abc.Callable, 'Callable'),
-            (collections.abc.MutableSet, 'MutableSet'),
-            (collections.abc.Mapping, 'Mapping'),
-            (collections.abc.MutableMapping, 'MutableMapping'),
-            (collections.abc.Sequence, 'Sequence'),
-            (collections.abc.MutableSequence, 'MutableSequence'),
-            (collections.abc.MappingView, 'MappingView'),
-            (collections.abc.KeysView, 'KeysView'),
-            (collections.abc.ItemsView, 'ItemsView'),
-            (collections.abc.ValuesView, 'ValuesView'),
-            (re.Pattern, 'Pattern'),
-            (re.Match, 'Match'),
-        )
-    },
+    **{k: getattr(typing, k.__name__) for k in _generic_type_origins},
 }
 
 
