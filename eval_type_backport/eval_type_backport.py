@@ -23,10 +23,6 @@ def is_not_subscriptable_error(e: TypeError) -> bool:
     return "' object is not subscriptable" in str(e)
 
 
-def _typing_alias(value: Any) -> Any:
-    return getattr(typing, value.__name__)
-
-
 def is_backport_fixable_error(e: TypeError) -> bool:
     return is_unsupported_types_for_union_error(e) or is_not_subscriptable_error(e)
 
@@ -45,34 +41,34 @@ new_generic_types = {
     contextlib.AbstractContextManager: typing.ContextManager,
     contextlib.AbstractAsyncContextManager: typing.AsyncContextManager,
     **{
-        k: _typing_alias(k)
-        for k in (
-            collections.OrderedDict,
-            collections.Counter,
-            collections.ChainMap,
-            collections.abc.Awaitable,
-            collections.abc.Coroutine,
-            collections.abc.AsyncIterable,
-            collections.abc.AsyncIterator,
-            collections.abc.AsyncGenerator,
-            collections.abc.Iterable,
-            collections.abc.Iterator,
-            collections.abc.Generator,
-            collections.abc.Reversible,
-            collections.abc.Container,
-            collections.abc.Collection,
-            collections.abc.Callable,
-            collections.abc.MutableSet,
-            collections.abc.Mapping,
-            collections.abc.MutableMapping,
-            collections.abc.Sequence,
-            collections.abc.MutableSequence,
-            collections.abc.MappingView,
-            collections.abc.KeysView,
-            collections.abc.ItemsView,
-            collections.abc.ValuesView,
-            re.Pattern,
-            re.Match,
+        k: getattr(typing, name)
+        for k, name in (
+            (collections.OrderedDict, 'OrderedDict'),
+            (collections.Counter, 'Counter'),
+            (collections.ChainMap, 'ChainMap'),
+            (collections.abc.Awaitable, 'Awaitable'),
+            (collections.abc.Coroutine, 'Coroutine'),
+            (collections.abc.AsyncIterable, 'AsyncIterable'),
+            (collections.abc.AsyncIterator, 'AsyncIterator'),
+            (collections.abc.AsyncGenerator, 'AsyncGenerator'),
+            (collections.abc.Iterable, 'Iterable'),
+            (collections.abc.Iterator, 'Iterator'),
+            (collections.abc.Generator, 'Generator'),
+            (collections.abc.Reversible, 'Reversible'),
+            (collections.abc.Container, 'Container'),
+            (collections.abc.Collection, 'Collection'),
+            (collections.abc.Callable, 'Callable'),
+            (collections.abc.MutableSet, 'MutableSet'),
+            (collections.abc.Mapping, 'Mapping'),
+            (collections.abc.MutableMapping, 'MutableMapping'),
+            (collections.abc.Sequence, 'Sequence'),
+            (collections.abc.MutableSequence, 'MutableSequence'),
+            (collections.abc.MappingView, 'MappingView'),
+            (collections.abc.KeysView, 'KeysView'),
+            (collections.abc.ItemsView, 'ItemsView'),
+            (collections.abc.ValuesView, 'ValuesView'),
+            (re.Pattern, 'Pattern'),
+            (re.Match, 'Match'),
         )
     },
 }
