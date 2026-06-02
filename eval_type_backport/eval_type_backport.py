@@ -23,15 +23,15 @@ def is_not_subscriptable_error(e: TypeError) -> bool:
     return "' object is not subscriptable" in str(e)
 
 
+def _typing_alias(value: Any) -> Any:
+    return getattr(typing, value.__name__)
+
+
 def is_backport_fixable_error(e: TypeError) -> bool:
     return is_unsupported_types_for_union_error(e) or is_not_subscriptable_error(e)
 
 
 # From https://peps.python.org/pep-0585/#implementation
-def _typing_alias(value: Any) -> Any:
-    return getattr(typing, value.__name__)
-
-
 new_generic_types = {
     tuple: typing.Tuple,
     list: typing.List,
