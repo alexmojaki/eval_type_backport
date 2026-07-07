@@ -73,6 +73,7 @@ jobs:
         pip install --upgrade pip
         pip install --upgrade coveralls .[tests]
     - name: Test
+      shell: bash
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COVERALLS_FLAG_NAME: "test-${{ matrix.python-version }}-${{ matrix.os }}"
