@@ -36,7 +36,18 @@ jobs:
       matrix:
         os: [ ubuntu, macos, windows ]
         eol: [ false ]
-        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.15', 'pypy3.8', 'pypy3.9', 'pypy3.10' ]
+        python-version:
+        - '3.8'
+        - '3.9'
+        - '3.10'
+        - '3.11'
+        - '3.12'
+        - '3.13'
+        - '3.14'
+        - '3.15.0b3'
+        - 'pypy3.8'
+        - 'pypy3.9'
+        - 'pypy3.10'
         include:
         - os: ubuntu
           python-version: '3.7'
